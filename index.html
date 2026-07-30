@@ -957,7 +957,13 @@
     const targetSegCenterDeg = (targetIndex * segAngle + segAngle / 2) * (180 / Math.PI);
     const fullSpins = 6 * 360;
     const randomJitter = (Math.random() - 0.5) * (segAngle * 0.5 * (180 / Math.PI));
-    const finalRotation = fullSpins + (360 - targetSegCenterDeg) + randomJitter;
+
+    // El ángulo final (mod 360) donde debe quedar la ruleta para que targetIndex
+    // caiga bajo el puntero, sea cual sea el giro acumulado de intentos anteriores.
+    const desiredFinalMod360 = (((360 - targetSegCenterDeg) + randomJitter) % 360 + 360) % 360;
+    const currentMod360 = ((currentRotation % 360) + 360) % 360;
+    const neededDelta = ((desiredFinalMod360 - currentMod360) + 360) % 360;
+    const finalRotation = fullSpins + neededDelta;
 
     currentRotation += finalRotation;
     canvas.style.transition = 'transform 5.5s cubic-bezier(0.17, 0.67, 0.16, 0.99)';
