@@ -748,6 +748,7 @@
     function applyImage(dataUrl) {
       const img = new Image();
       img.onload = () => {
+        seg.hasCustom = true;
         seg.imgObj = img;
         seg.image = dataUrl;
         thumb.src = dataUrl;
@@ -758,15 +759,16 @@
       img.src = dataUrl;
     }
 
-    // Icono genérico por defecto: se genera y se carga bajo demanda para que
-    // nunca compita con la carga de una foto propia ya guardada.
+    // Icono genérico por defecto: se genera y se carga bajo demanda. Comprueba
+    // seg.hasCustom en el momento en que TERMINA de cargar (no antes), para que
+    // una foto propia subida mientras tanto nunca quede tapada por el genérico.
     function loadDefaultIcon(applyToWheel) {
       const defaultDataUri = buildGenericIcon(seg.icon, colors[i % colors.length]);
       const defaultImg = new Image();
       defaultImg.onload = () => {
         seg.defaultImgObj = defaultImg;
         seg.defaultImage = defaultDataUri;
-        if (applyToWheel) {
+        if (applyToWheel && !seg.hasCustom) {
           seg.imgObj = defaultImg;
           seg.image = defaultDataUri;
           thumb.src = defaultDataUri;
@@ -797,14 +799,19 @@
     });
 
     clearBtn.addEventListener('click', () => {
-      seg.imgObj = seg.defaultImgObj || null;
-      seg.image = seg.defaultImage || null;
-      thumb.src = seg.defaultImage || '';
-      thumb.style.display = seg.defaultImage ? 'block' : 'none';
+      seg.hasCustom = false;
       clearBtn.style.display = 'none';
       fileInput.value = '';
       localStorage.removeItem('wheelSegImg_' + i);
-      drawWheel();
+      if (seg.defaultImgObj) {
+        seg.imgObj = seg.defaultImgObj;
+        seg.image = seg.defaultImage;
+        thumb.src = seg.defaultImage;
+        thumb.style.display = 'block';
+        drawWheel();
+      } else {
+        loadDefaultIcon(true);
+      }
     });
   });
 
