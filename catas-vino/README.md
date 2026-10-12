@@ -2,7 +2,7 @@
 
 App web instalable (PWA) para Catarsi (https://www.salutcatarsi.cat/), el negocio de catas itinerantes de Jordi Roura:
 
-- **Portada**: tu logo, tu foto y una breve presentación; debajo, un calendario mensual con las catas marcadas (al pulsar un día se ve esa cata y se puede reservar), la lista de próximas catas, las novedades y el aviso para pedir una cata privada.
+- **Portada**: tu logo, tu foto y una breve presentación; debajo, un calendario mensual con las catas marcadas (al pulsar un día se ve esa cata y se puede reservar), las próximas catas en **tarjetas deslizables** (se arrastran con el dedo; en el ordenador, con las flechas), las novedades y el aviso para pedir una cata privada.
 - **Clientes**: ven las próximas catas, reservan plazas (con lista de espera), piden una cata privada, juegan en directo, suben en el ranking y canjean premios. En 6 idiomas; **el catalán es el idioma principal** (CA, ES, EN, FR, DE, IT).
 - **Tú y tu equipo**: panel para crear catas, ver y gestionar reservas, responder a catas privadas, mantener el catálogo de vinos y las preguntas, **presentar la partida** y entregar premios.
 - Funciona **sin instalar nada**: es HTML + JavaScript. Se aloja en **GitHub Pages** y los datos viven en **Firebase**.
@@ -88,7 +88,7 @@ Puntos de una pregunta: `puntos base + hasta un 50 % extra por rapidez` (valores
 
 ## 4. Personalizar
 
-- **Logo y foto (portada)**: ahora se cargan directamente desde tu web (`js/config.js → brand.logo` y `brand.photo` apuntan a salutcatarsi.cat). Para que la app no dependa de la web, descarga los dos archivos, copia los archivos en la carpeta `img/` (instrucciones en `img/LEEME.txt`) y rellena en `js/config.js → brand`: `logo: 'img/logo.png'`, `photo: 'img/foto.jpg'`, y si quieres `owner` (tu nombre bajo la foto) e `intro` (tu texto de presentación). Mientras estén vacíos se ven un marcador elegante y un texto de ejemplo en cada idioma.
+- **Logo y foto (portada)**: el logo «catarsi» ya está en la app (`img/logo-catarsi.png`; se usa en la barra superior, la portada y la pantalla de arranque). La foto se carga desde tu web (`js/config.js → brand.photo`); para que la app no dependa de la web, descárgala a `img/` y pon `photo: 'img/foto.jpg'`. En `js/config.js → brand` también puedes poner `owner` (tu nombre bajo la foto) e `intro` (tu texto de presentación).
 - **Nombre, correo, Instagram, WhatsApp**: `js/config.js → brand` (`email`, `instagram`, `whatsapp`; los que dejes vacíos no se muestran). El lema está en las traducciones (`brand.tagline`).
 - **Colores**: variables CSS al principio de `css/app.css` (fondo claro con granate y dorado como acentos).
 - **Tipografías**: Newsreader (títulos) y Hanken Grotesk (texto), cargadas desde Google Fonts en `index.html`; sin internet se usan fuentes del sistema.
@@ -111,7 +111,7 @@ js/store.js                                   capa de datos: modo demo y Firebas
 js/api.js · js/game.js                        reservas, lista de espera, avisos / lógica de la partida
 js/icons.js                                   iconos de línea (SVG) de la interfaz
 js/views/*.js                                 pantallas del cliente (catas.js = portada + calendario)
-img/                                          tu logo y tu foto
+img/                                          logo «catarsi» (y tu foto, si la copias aquí)
 js/views/admin/*.js                           panel de administración
 js/locales/*.js                               traducciones
 firestore.rules                               seguridad de la base de datos
@@ -130,8 +130,8 @@ El **presentador hace de árbitro**: su dispositivo abre cada pregunta, revela l
 - **Avisos solo dentro de la app** (🔔). No hay notificaciones push ni emails todavía.
 - **Pago solo en el local**; la app gestiona reservas, no cobra.
 - **Panel de gestión solo en catalán y castellano.**
-- **Logo y foto cargados desde salutcatarsi.cat**: si esa web cambia los archivos de sitio, desaparecen de la app (se muestra un marcador). Cópialos a `img/` cuando puedas.
-- **Los iconos de la app instalada** (carpeta `icons/`) siguen siendo genéricos: falta generarlos con el logo de Catarsi.
+- **La foto se carga desde salutcatarsi.cat**: si esa web cambia el archivo de sitio, desaparece de la app (se muestra un marcador). Cópiala a `img/` cuando puedas.
+- **Iconos de la app instalada** (carpeta `icons/`): ya llevan el logo «catarsi». Si ya tenías la app instalada en el móvil, puede que el icono antiguo se mantenga hasta que la desinstales y vuelvas a instalarla.
 - **Mapas**: se usan OpenStreetMap/Nominatim (gratis, sin clave). Para mucho tráfico conviene otro proveedor.
 - Las imágenes de preguntas se reducen y se guardan dentro de Firestore (sin Firebase Storage) para no exigir plan de pago; para muchas imágenes grandes conviene pasar a Storage.
 - La edad se confirma con una casilla y se comprueba en el local.
@@ -142,4 +142,4 @@ El **presentador hace de árbitro**: su dispositivo abre cada pregunta, revela l
 2. **Notificaciones push** (Firebase Cloud Messaging) y **emails** de confirmación/recordatorio (Cloud Functions + extensión de email).
 3. **Pago online** (Stripe) para señal de reserva.
 4. **Cloud Functions** para reservas, lista de espera y puntos.
-5. Panel en más idiomas e iconos propios con el logo de Catarsi.
+5. Panel de gestión en más idiomas.

@@ -9,10 +9,10 @@ export const CONFIG = {
   brand: {
     name: 'Catarsi',
     emoji: '🍷',
-    // Portada: logo y foto de https://www.salutcatarsi.cat/ (se cargan desde tu web).
-    // Cuando quieras, descarga los dos archivos a la carpeta img/ y pon aquí su ruta
-    // (por ejemplo 'img/logo.png' y 'img/foto.jpg') para que la app no dependa de la web.
-    logo: 'https://www.salutcatarsi.cat/wp-content/uploads/2022/12/LOGO_CATARSI.png',
+    // Logo «catarsi» (archivo propio en img/logo-catarsi.png: barra superior, portada y arranque).
+    // Foto de la portada: se carga de https://www.salutcatarsi.cat/. Si quieres que la app no dependa de la web,
+    // descárgala a la carpeta img/ y pon aquí su ruta (por ejemplo 'img/foto.jpg').
+    logo: 'img/logo-catarsi.png',
     photo: 'https://www.salutcatarsi.cat/wp-content/uploads/2025/02/catarsi_jordi-707x1024.png',
     owner: 'Jordi Roura',
     intro: '',         // texto de presentación propio; vacío = el de las traducciones (home.intro)

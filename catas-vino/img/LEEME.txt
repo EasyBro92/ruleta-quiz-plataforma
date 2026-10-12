@@ -1,13 +1,13 @@
-Aquí van tu logo y tu foto.
-(Ahora mismo la app los carga directamente desde salutcatarsi.cat: ver js/config.js → brand.logo y brand.photo.
- Para que no dependa de la web, descarga los dos archivos, cópialos aquí y pon su ruta en config.js.)
+Imágenes de la app.
 
-1. Copia tus archivos en esta carpeta, por ejemplo:
-     logo.png   (logo con fondo transparente, ~600 px de ancho)
-     foto.jpg   (tu foto, vertical, ~900 x 1100 px; que la cara quede en la parte de arriba)
-2. Abre js/config.js y rellena, dentro de brand:
-     logo:  'img/logo.png',
-     photo: 'img/foto.jpg',
-     owner: 'Tu nombre',            (opcional, aparece bajo la foto)
-     intro: 'Tu texto de presentación',   (opcional; si lo dejas vacío se usa el texto de ejemplo)
-3. Sube los cambios y aumenta VERSION en sw.js (catas-v3, catas-v4...) para que los móviles vean lo nuevo.
+- logo-catarsi.png  → el logo «catarsi» (ya puesto). Se ve en la barra superior, la portada y la pantalla de arranque.
+  Si algún día lo cambias, sustituye este archivo (fondo transparente, ~500-600 px de ancho). Los iconos de la app
+  instalada (carpeta icons/) se hicieron a partir de este logo.
+
+- La foto de la portada ahora se carga desde salutcatarsi.cat (js/config.js → brand.photo).
+  Para que la app no dependa de la web:
+    1. Copia tu foto aquí, por ejemplo foto.jpg (vertical, ~900 x 1100 px; que la cara quede en la parte de arriba).
+    2. En js/config.js, dentro de brand, pon:  photo: 'img/foto.jpg',
+       (opcional: owner: 'Tu nombre' e intro: 'Tu texto de presentación').
+
+Después de subir cambios, aumenta VERSION en sw.js (catas-v5, catas-v6...) para que los móviles vean lo nuevo.

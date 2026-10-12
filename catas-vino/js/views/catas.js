@@ -20,6 +20,45 @@ export const cataCard = (c) => {
     </div></a>`;
 };
 
+/** Tarjetas deslizables: se arrastran con el dedo (o con las flechas en el ordenador). */
+const carousel = (items) => html`<div class="car">
+  <div class="car-track" data-car-track>${items.map((c) => html`<div class="car-item">${cataCard(c)}</div>`)}</div>
+  ${items.length > 1 ? html`<div class="car-ui">
+    <button type="button" class="car-btn" data-car-go="-1" aria-label="${t('home.carPrev')}">${icon('left', 18)}</button>
+    ${items.length <= 7
+      ? html`<div class="car-dots">${items.map((_, i) => html`<button type="button" data-car-dot="${i}" aria-label="${t('home.carGo', { n: i + 1, total: items.length })}"></button>`)}</div>`
+      : html`<span class="car-count" data-car-count>1 / ${items.length}</span>`}
+    <button type="button" class="car-btn" data-car-go="1" aria-label="${t('home.carNext')}">${icon('right', 18)}</button>
+  </div>` : ''}
+</div>`;
+
+/** Posición de la tarjeta visible según el scroll del carrusel. */
+const carIndex = (track) => {
+  const items = track.children, n = items.length;
+  if (n < 2) return 0;
+  if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 4) return n - 1;
+  const step = items[1].offsetLeft - items[0].offsetLeft;
+  return Math.max(0, Math.min(n - 1, Math.round(track.scrollLeft / step)));
+};
+const carScrollTo = (track, i) => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const items = track.children, left = items[Math.max(0, Math.min(items.length - 1, i))].offsetLeft - items[0].offsetLeft;
+  track.scrollTo({ left, behavior: reduce ? 'auto' : 'smooth' });
+};
+function carSync(root) {
+  const track = root.querySelector('[data-car-track]'); if (!track) return;
+  const i = carIndex(track), n = track.children.length;
+  const canPrev = track.scrollLeft > 4, canNext = track.scrollLeft + track.clientWidth < track.scrollWidth - 4;
+  const car = track.closest('.car');
+  car.classList.toggle('has-prev', canPrev); car.classList.toggle('has-next', canNext);
+  const ui = car.querySelector('.car-ui'); if (ui) ui.hidden = !canPrev && !canNext;       // si caben todas, no hace falta nada
+  root.querySelectorAll('[data-car-dot]').forEach((d) => { const on = Number(d.dataset.carDot) === i; d.classList.toggle('on', on); if (on) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current'); });
+  const cnt = root.querySelector('[data-car-count]'); if (cnt) cnt.textContent = `${i + 1} / ${n}`;
+  const prev = root.querySelector('[data-car-go="-1"]'), next = root.querySelector('[data-car-go="1"]');
+  if (prev) prev.disabled = !canPrev;
+  if (next) next.disabled = !canNext;
+}
+
 export function installBanner() {
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.navigator.standalone && !matchMedia('(display-mode: standalone)').matches;
   if (S.installEvent) return html`<div class="install">${icon('download', 24)}<span class="grow">${t('install.text')}</span><button class="btn sm gold" data-act="install">${t('install.btn')}</button></div>`;
@@ -48,7 +87,7 @@ function cover() {
 const keyOf = (ms) => isoDay(ms);
 
 export default function view({ el }) {
-  let catas = null, news = null, month = null, selDay = '';
+  let catas = null, news = null, month = null, selDay = '', carKey = '';
   const lang = () => S.lang || 'ca';
 
   const upcoming = () => (catas || []).filter((c) => !isPast(c) || c.startsAt > Date.now() - 3600000).sort((a, b) => a.startsAt - b.startsAt);
@@ -90,19 +129,30 @@ export default function view({ el }) {
     if (catas && !month) { const f = list[0] ? new Date(list[0].startsAt) : new Date(); month = { y: f.getFullYear(), m: f.getMonth() }; }
     const shown = selDay ? list.filter((c) => keyOf(c.startsAt) === selDay) : list;
     const selDate = selDay ? fromIsoDay(selDay) : 0;
+    // el carrusel se vuelve a dibujar con cada cambio de datos: guardamos por dónde iba para no devolverlo al principio
+    const oldTrack = el.querySelector('[data-car-track]');
+    const keepLeft = oldTrack && carKey === selDay + '|' + (month ? month.y + '-' + month.m : '') ? oldTrack.scrollLeft : 0;
+    carKey = selDay + '|' + (month ? month.y + '-' + month.m : '');
     setHtml(el, html`
       ${cover()}
       <section class="sect" id="calendario">
         <h2>${t('home.upcoming')}</h2>
         ${month ? calendar(list) : html`<div class="empty">…</div>`}
         ${selDay ? html`<div class="list-head"><h3>${t('cal.day', { d: fmtDate(selDate, { weekday: 'long', day: 'numeric', month: 'long' }) })}</h3><span class="filter">${t('cal.all')}<button type="button" data-act="clear-day" aria-label="${t('cal.all')}">×</button></span></div>` : html`<div class="mt2"></div>`}
-        ${catas === null ? '' : shown.length ? html`<div class="grid auto">${shown.map(cataCard)}</div>` : html`<div class="card empty">${t('home.none')}</div>`}
+        ${catas === null ? '' : shown.length ? carousel(shown) : html`<div class="card empty">${t('home.none')}</div>`}
       </section>
       ${news ? html`<section class="sect"><div class="news">${icon('megaphone', 22)}<div><h3>${news.title}</h3><p class="muted small" style="margin:0">${news.body}</p></div></div></section>` : ''}
       <section class="sect"><div class="private-cta"><h3>${t('home.privateTitle')}</h3><p>${t('home.privateText')}</p><div class="cta-row"><a class="btn primary" href="#/private">${t('home.private')}</a></div><div class="cta-contact">${contactBlock()}</div></div></section>
       <div class="sect">${installBanner()}</div>
     `);
     el.querySelectorAll('img[data-brand]').forEach((img) => img.addEventListener('error', () => { brokenImg.add(img.dataset.brand); render(); }, { once: true }));
+    const track = el.querySelector('[data-car-track]');
+    if (track) {
+      if (keepLeft) track.scrollLeft = keepLeft;
+      carSync(el);
+      let raf = 0;
+      track.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => carSync(el)); }, { passive: true });
+    }
   };
 
   const u1 = db.onList('catas', { where: [['published', '==', true]] }, (r) => { catas = r; render(); });
@@ -112,6 +162,12 @@ export default function view({ el }) {
     const tgt = e.target;
     if (tgt.closest('[data-act="install"]') && S.installEvent) { S.installEvent.prompt(); await S.installEvent.userChoice.catch(() => {}); S.installEvent = null; render(); return; }
     if (tgt.closest('[data-act="to-calendar"]')) { const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; el.querySelector('#calendario')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); return; }
+    const go = tgt.closest('[data-car-go]'), dot = tgt.closest('[data-car-dot]');
+    if (go || dot) {
+      const track = el.querySelector('[data-car-track]'); if (!track) return;
+      carScrollTo(track, dot ? Number(dot.dataset.carDot) : carIndex(track) + Number(go.dataset.carGo));
+      return;
+    }
     const mb = tgt.closest('[data-month]');
     if (mb && month) { const d = new Date(month.y, month.m + Number(mb.dataset.month), 1); month = { y: d.getFullYear(), m: d.getMonth() }; selDay = ''; render(); return; }
     const db_ = tgt.closest('[data-day]');

@@ -51,7 +51,7 @@ function renderShell(chrome, wide, nav) {
   const demo = isDemo() ? html`<div class="demo-bar">${t('demo.bar')} · <a href="#" data-act="demo-info">${t('demo.accounts')}</a> · <a href="#" data-act="demo-reset">${t('demo.reset')}</a></div>` : '';
   setHtml(app(), html`${demo}
     <header class="topbar">
-      <a class="brand" href="#/">${icon('glass', 22, 1.5)}<span>${CONFIG.brand.name}</span></a>
+      <a class="brand" href="#/" aria-label="${CONFIG.brand.name}">${CONFIG.brand.logo ? html`<img src="${CONFIG.brand.logo}" alt="" data-brand-logo>` : html`${icon('glass', 22, 1.5)}<span>${CONFIG.brand.name}</span>`}</a>
       <span class="grow"></span>
       <select id="lang" aria-label="${t('a11y.lang')}">${raw(lang)}</select>
       ${S.user && !S.user.anonymous ? html`<a class="icon-btn" href="#/notices" aria-label="${t('nav.notices')}">${icon('bell', 19)}${S.unread ? html`<span class="dot"></span>` : ''}</a>` : ''}
@@ -59,6 +59,8 @@ function renderShell(chrome, wide, nav) {
     <main id="view" class="${wide ? 'wide' : ''}"></main>
     <nav class="nav" aria-label="${t('a11y.nav')}">${navItems().map(([k, h, ic, l]) => html`<a href="#${h}" data-nav="${k}" class="${k === nav ? 'on' : ''}">${icon(ic, 22)}${l}</a>`)}</nav>`);
   chromeMode = 'full';
+  // si el logo no carga, se enseña el icono con el nombre
+  document.querySelector('img[data-brand-logo]')?.addEventListener('error', (e) => { e.target.closest('.brand').innerHTML = `${icon('glass', 22, 1.5)}<span>${esc(CONFIG.brand.name)}</span>`; }, { once: true });
 }
 function markNav(nav, wide) {
   document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.nav === nav));
