@@ -30,10 +30,13 @@ p { margin: 0 0 .8em; } a { color: var(--wine); text-underline-offset: 3px; }
 /* arranque */
 .boot { display: grid; place-items: center; min-height: 100vh; color: var(--wine); }
 .boot svg { width: 56px; height: 56px; animation: float 1.8s ease-in-out infinite; }
-.boot img { display: block; width: min(180px, 52vw); height: auto; animation: bootfade 1.6s ease-in-out infinite alternate; }
+/* pantalla de apertura: el logo al abrir la app */
+#splash { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: var(--bg); pointer-events: none; transition: opacity .5s ease; }
+#splash.out { opacity: 0; }
+#splash img { display: block; width: min(210px, 56vw); height: auto; animation: splashin .8s ease-out both; }
+@keyframes splashin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes float { 50% { transform: translateY(-8px) rotate(-5deg); } }
-@keyframes bootfade { from { opacity: .35; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .boot img { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #splash, #splash img { transition: none; animation: none; } }
 
 /* estructura */
 #app { position: relative; min-height: 100vh; display: flex; flex-direction: column; }

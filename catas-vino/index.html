@@ -11,6 +11,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Catarsi">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preload" as="image" href="img/logo-apertura.png">
   <link rel="icon" type="image/png" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,12 +20,12 @@
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <div id="app">
-    <div class="boot"><img src="img/logo-catarsi.png" alt="Catarsi"></div>
-  </div>
+  <div id="splash" aria-hidden="true"><img src="img/logo-apertura.png" alt="" width="603" height="753"></div>
+  <div id="app"><div class="boot"></div></div>
   <div id="toasts" aria-live="polite"></div>
   <div id="modal-root"></div>
-  <noscript>Aquesta aplicació necessita JavaScript.</noscript>
+  <noscript><style>#splash{display:none}</style>Aquesta aplicació necessita JavaScript.</noscript>
+  <script>setTimeout(function () { var s = document.getElementById('splash'); if (s) s.remove(); }, 8000);</script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

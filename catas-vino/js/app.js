@@ -71,6 +71,16 @@ function refreshBell() {
   if (b) { const d = b.querySelector('.dot'); if (S.unread && !d) b.insertAdjacentHTML('beforeend', '<span class="dot"></span>'); if (!S.unread && d) d.remove(); }
 }
 
+// ---------- pantalla de apertura ----------
+// El logo se ve al menos ~1,3 s desde que se abre la app y se desvanece cuando ya está todo listo.
+let splashDone = false;
+function hideSplash() {
+  if (splashDone) return; splashDone = true;
+  const el = document.getElementById('splash'); if (!el) return;
+  if (navigator.webdriver) { el.remove(); return; }             // pruebas automáticas: sin espera
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 550); }, Math.max(0, 1300 - performance.now()));
+}
+
 // ---------- enrutado ----------
 async function route() {
   const my = ++token;
@@ -96,6 +106,7 @@ async function route() {
     console.error(e);
     if (my === token) setHtml(el, html`<div class="card"><h3>${t('err.generic')}</h3><p class="muted small">${String(e.message || e)}</p><a class="btn" href="#/">${t('common.home')}</a></div>`);
   }
+  if (my === token) hideSplash();
 }
 
 // ---------- autenticación y perfil ----------
@@ -179,7 +190,7 @@ async function main() {
     lang = CONFIG.languages.some(([c]) => c === nav) && !(CONFIG.noAutoLang || []).includes(nav) ? nav : CONFIG.defaultLang;
   }
   S.lang = lang; await loadLang(lang); setLocale(lang); document.documentElement.lang = lang;
-  try { await initStore(); } catch (e) { console.error(e); setHtml(app(), html`<div class="card" style="margin:20px"><h3>${t('err.connect')}</h3><p class="muted">${String(e.message || e)}</p></div>`); return; }
+  try { await initStore(); } catch (e) { console.error(e); setHtml(app(), html`<div class="card" style="margin:20px"><h3>${t('err.connect')}</h3><p class="muted">${String(e.message || e)}</p></div>`); hideSplash(); return; }
   bindGlobal();
   try { if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch { /* sin service worker (p. ej. dentro de un visor) */ }
   auth.onChange(onAuth);

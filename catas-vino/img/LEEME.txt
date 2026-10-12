@@ -1,8 +1,11 @@
 Imágenes de la app.
 
 - logo-catarsi.png  → el logo «catarsi» (ya puesto). Se ve en la barra superior, la portada y la pantalla de arranque.
-  Si algún día lo cambias, sustituye este archivo (fondo transparente, ~500-600 px de ancho). Los iconos de la app
-  instalada (carpeta icons/) se hicieron a partir de este logo.
+  Si algún día lo cambias, sustituye este archivo (fondo transparente, ~500-600 px de ancho).
+
+- logo-apertura.png → el logo completo (copa rosa, «catarsi» y «tasts a mida») que sale al abrir la app.
+  Está reconstruido en alta resolución (603 x 753 px, fondo transparente). Los iconos de la app instalada
+  (carpeta icons/) se hicieron a partir de este logo.
 
 - La foto de la portada ahora se carga desde salutcatarsi.cat (js/config.js → brand.photo).
   Para que la app no dependa de la web:
@@ -10,4 +13,4 @@ Imágenes de la app.
     2. En js/config.js, dentro de brand, pon:  photo: 'img/foto.jpg',
        (opcional: owner: 'Tu nombre' e intro: 'Tu texto de presentación').
 
-Después de subir cambios, aumenta VERSION en sw.js (catas-v5, catas-v6...) para que los móviles vean lo nuevo.
+Después de subir cambios, aumenta VERSION en sw.js (catas-v6, catas-v7...) para que los móviles vean lo nuevo.
