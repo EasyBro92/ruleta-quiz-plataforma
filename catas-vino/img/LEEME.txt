@@ -1,6 +1,6 @@
 Imágenes de la app.
 
-- logo-catarsi.png  → el logo «catarsi» (ya puesto). Se ve en la barra superior, la portada y la pantalla de arranque.
+- logo-catarsi.png  → el logo «catarsi» (ya puesto). Se ve en la barra superior y en la portada.
   Si algún día lo cambias, sustituye este archivo (fondo transparente, ~500-600 px de ancho).
 
 - logo-apertura.png → el logo completo (copa rosa, «catarsi» y «tasts a mida») que sale al abrir la app.
