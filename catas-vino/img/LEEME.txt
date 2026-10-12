@@ -1,4 +1,6 @@
 Aquí van tu logo y tu foto.
+(Ahora mismo la app los carga directamente desde salutcatarsi.cat: ver js/config.js → brand.logo y brand.photo.
+ Para que no dependa de la web, descarga los dos archivos, cópialos aquí y pon su ruta en config.js.)
 
 1. Copia tus archivos en esta carpeta, por ejemplo:
      logo.png   (logo con fondo transparente, ~600 px de ancho)

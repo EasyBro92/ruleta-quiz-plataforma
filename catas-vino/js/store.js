@@ -44,7 +44,7 @@ const rid = () => Array.from(crypto.getRandomValues(new Uint8Array(10))).map((b)
 //                              MODO DEMO
 // =====================================================================
 function createDemo() {
-  const KEY = 'catas_demo_db_v1', AKEY = 'catas_demo_accounts_v1';
+  const KEY = 'catas_demo_db_v2', AKEY = 'catas_demo_accounts_v2';
   let data = {};
   const listeners = new Set();
   const bc = 'BroadcastChannel' in window ? new BroadcastChannel('catas_demo') : null;
@@ -143,8 +143,8 @@ function createDemo() {
   const saveAccounts = (a) => { try { localStorage.setItem(AKEY, JSON.stringify(a)); } catch { /* nada */ } };
   function seedAccounts() {
     const a = {
-      'admin@demo.com': { uid: 'u_admin', pass: 'demo1234', name: 'Equipo Demo' },
-      'ana@demo.com': { uid: 'u_ana', pass: 'demo1234', name: 'Ana Demo' },
+      'admin@demo.com': { uid: 'u_admin', pass: 'demo1234', name: 'Equip Demo' },
+      'ana@demo.com': { uid: 'u_ana', pass: 'demo1234', name: 'Anna Demo' },
     };
     saveAccounts(a); return a;
   }

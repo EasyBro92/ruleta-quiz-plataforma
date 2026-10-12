@@ -38,7 +38,7 @@ export async function addTeam(sid, name, kind = 'free') {
   return id;
 }
 
-export async function joinSession(sid, uid, { nick, teamId = '', registered = false, adult = true, lang = 'es' }) {
+export async function joinSession(sid, uid, { nick, teamId = '', registered = false, adult = true, lang = 'ca' }) {
   const p = `${sp(sid)}/players/${uid}`;
   const ex = await db.get(p);
   if (ex) { await db.update(p, { nick, teamId: teamId || ex.teamId || '', lang }); return; }

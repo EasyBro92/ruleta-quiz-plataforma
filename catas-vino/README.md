@@ -1,9 +1,9 @@
-# 🍷 Catas de vino — reservas + juego en directo
+# 🍷 Catarsi — tasts de vi: reserves + joc en directe
 
-App web instalable (PWA) para tu negocio de catas itinerantes:
+App web instalable (PWA) para Catarsi (https://www.salutcatarsi.cat/), el negocio de catas itinerantes de Jordi Roura:
 
 - **Portada**: tu logo, tu foto y una breve presentación; debajo, un calendario mensual con las catas marcadas (al pulsar un día se ve esa cata y se puede reservar), la lista de próximas catas, las novedades y el aviso para pedir una cata privada.
-- **Clientes**: ven las próximas catas, reservan plazas (con lista de espera), piden una cata privada, juegan en directo, suben en el ranking y canjean premios. En 6 idiomas (ES, EN, FR, DE, IT, CA).
+- **Clientes**: ven las próximas catas, reservan plazas (con lista de espera), piden una cata privada, juegan en directo, suben en el ranking y canjean premios. En 6 idiomas; **el catalán es el idioma principal** (CA, ES, EN, FR, DE, IT).
 - **Tú y tu equipo**: panel para crear catas, ver y gestionar reservas, responder a catas privadas, mantener el catálogo de vinos y las preguntas, **presentar la partida** y entregar premios.
 - Funciona **sin instalar nada**: es HTML + JavaScript. Se aloja en **GitHub Pages** y los datos viven en **Firebase**.
 
@@ -88,13 +88,16 @@ Puntos de una pregunta: `puntos base + hasta un 50 % extra por rapidez` (valores
 
 ## 4. Personalizar
 
-- **Tu logo y tu foto (portada)**: copia los archivos en la carpeta `img/` (instrucciones en `img/LEEME.txt`) y rellena en `js/config.js → brand`: `logo: 'img/logo.png'`, `photo: 'img/foto.jpg'`, y si quieres `owner` (tu nombre bajo la foto) e `intro` (tu texto de presentación). Mientras estén vacíos se ven un marcador elegante y un texto de ejemplo en cada idioma.
-- **Nombre, lema, WhatsApp/email de contacto**: `js/config.js → brand`.
+- **Logo y foto (portada)**: ahora se cargan directamente desde tu web (`js/config.js → brand.logo` y `brand.photo` apuntan a salutcatarsi.cat). Para que la app no dependa de la web, descarga los dos archivos, copia los archivos en la carpeta `img/` (instrucciones en `img/LEEME.txt`) y rellena en `js/config.js → brand`: `logo: 'img/logo.png'`, `photo: 'img/foto.jpg'`, y si quieres `owner` (tu nombre bajo la foto) e `intro` (tu texto de presentación). Mientras estén vacíos se ven un marcador elegante y un texto de ejemplo en cada idioma.
+- **Nombre, correo, Instagram, WhatsApp**: `js/config.js → brand` (`email`, `instagram`, `whatsapp`; los que dejes vacíos no se muestran). El lema está en las traducciones (`brand.tagline`).
 - **Colores**: variables CSS al principio de `css/app.css` (fondo claro con granate y dorado como acentos).
 - **Tipografías**: Newsreader (títulos) y Hanken Grotesk (texto), cargadas desde Google Fonts en `index.html`; sin internet se usan fuentes del sistema.
 - **Iconos**: carpeta `icons/` (192, 512, maskable, apple-touch, favicon).
 - **Plazo de cancelación (48 h), edad mínima, puntos por partida**: `js/config.js`.
-- **Textos / idiomas**: `js/locales/*.js` (una clave por línea, mismas claves en los 6 archivos). El panel de administración está solo en castellano.
+- **Idiomas**: el catalán (`js/locales/ca.js`) es el idioma principal y el de respaldo: si a otro idioma le falta una frase, se ve en catalán. Quien tenga el navegador en castellano ve la app en catalán la primera vez (puede cambiar con el selector; se configura en `js/config.js → noAutoLang`).
+- **Contenido (tasts, novedades, premios, preguntas)**: se escribe **una sola vez, en catalán**; la interfaz se traduce sola. Lo que se guarda desde el panel (por ejemplo las preguntas que se generan desde un vino) también sale en catalán.
+- **Panel de gestión**: disponible en catalán y castellano (en los demás idiomas se ve en catalán). Las frases están en `js/locales/ca.js` y `es.js`, con claves que empiezan por `a.` (panel) y `q.` (generador de preguntas).
+- **Textos**: `js/locales/*.js` (una clave por línea, no cambies las claves ni lo que va entre {llaves}).
 
 ---
 
@@ -126,7 +129,9 @@ El **presentador hace de árbitro**: su dispositivo abre cada pregunta, revela l
 - **Sin servidor propio**: reservas, lista de espera y puntos se calculan en los dispositivos (con transacciones). Las reglas los acotan, pero no son a prueba de un usuario técnico malintencionado. Para endurecerlo: Cloud Functions (fase 2).
 - **Avisos solo dentro de la app** (🔔). No hay notificaciones push ni emails todavía.
 - **Pago solo en el local**; la app gestiona reservas, no cobra.
-- **Panel de administración solo en castellano.**
+- **Panel de gestión solo en catalán y castellano.**
+- **Logo y foto cargados desde salutcatarsi.cat**: si esa web cambia los archivos de sitio, desaparecen de la app (se muestra un marcador). Cópialos a `img/` cuando puedas.
+- **Los iconos de la app instalada** (carpeta `icons/`) siguen siendo genéricos: falta generarlos con el logo de Catarsi.
 - **Mapas**: se usan OpenStreetMap/Nominatim (gratis, sin clave). Para mucho tráfico conviene otro proveedor.
 - Las imágenes de preguntas se reducen y se guardan dentro de Firestore (sin Firebase Storage) para no exigir plan de pago; para muchas imágenes grandes conviene pasar a Storage.
 - La edad se confirma con una casilla y se comprueba en el local.
@@ -137,4 +142,4 @@ El **presentador hace de árbitro**: su dispositivo abre cada pregunta, revela l
 2. **Notificaciones push** (Firebase Cloud Messaging) y **emails** de confirmación/recordatorio (Cloud Functions + extensión de email).
 3. **Pago online** (Stripe) para señal de reserva.
 4. **Cloud Functions** para reservas, lista de espera y puntos.
-5. Panel multi-idioma, marca definitiva e iconos propios.
+5. Panel en más idiomas e iconos propios con el logo de Catarsi.

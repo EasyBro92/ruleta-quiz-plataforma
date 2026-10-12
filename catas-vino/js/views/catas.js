@@ -1,4 +1,4 @@
-/* Inicio: portada (logo, foto y presentación), calendario mensual y próximas catas */
+/* Inicio: portada (logo, foto y presentación), calendario mensual y próximos tasts */
 import { db } from '../store.js';
 import { S, bus } from '../state.js';
 import { t } from '../i18n.js';
@@ -6,6 +6,7 @@ import { CONFIG } from '../config.js';
 import { html, setHtml, fmtDate, fmtTime, dayNum, monthShort, money, isoDay, fromIsoDay } from '../util.js';
 import { seatsLeft, isFull, isPast } from '../api.js';
 import { icon, portraitPlaceholder } from '../icons.js';
+import { contactBlock } from '../contact.js';
 
 export const cataCard = (c) => {
   const left = seatsLeft(c), pct = c.capacity ? Math.min(100, Math.round(((c.seatsTaken || 0) / c.capacity) * 100)) : 0;
@@ -26,15 +27,18 @@ export function installBanner() {
   return '';
 }
 
+// si el logo o la foto no cargan (p. ej. sin conexión), se enseña el marcador en vez de una imagen rota
+const brokenImg = new Set();
+
 /** Portada: el logo y tu foto, y debajo la presentación. */
 function cover() {
-  const b = CONFIG.brand;
+  const b = CONFIG.brand, logo = b.logo && !brokenImg.has('logo'), photo = b.photo && !brokenImg.has('photo');
   return html`<section class="cover">
     <div class="cover-logo">
-      ${b.logo ? html`<img src="${b.logo}" alt="">` : icon('glass', 38, 1.3)}
-      <h1 class="${b.logo ? 'sr-only' : ''}">${b.name}</h1>
+      ${logo ? html`<img src="${b.logo}" alt="" data-brand="logo">` : icon('glass', 38, 1.3)}
+      <h1 class="${logo ? 'sr-only' : ''}">${b.name}</h1>
     </div>
-    <div class="arch"><div class="frame">${b.photo ? html`<img src="${b.photo}" alt="${b.owner || b.name}">` : html`<div class="ph">${portraitPlaceholder()}<span>Aquí irá tu foto</span></div>`}</div></div>
+    <div class="arch"><div class="frame">${photo ? html`<img src="${b.photo}" alt="${b.owner || b.name}" data-brand="photo">` : html`<div class="ph">${portraitPlaceholder()}${b.photo ? '' : html`<span>${t('home.photoPh')}</span>`}</div>`}</div></div>
     ${b.owner ? html`<p class="owner">${b.owner}</p>` : ''}
     <p class="intro">${b.intro || t('home.intro')}</p>
     <div class="cover-cta"><button class="btn primary" data-act="to-calendar">${t('home.book')} ${icon('down', 18)}</button></div>
@@ -45,7 +49,7 @@ const keyOf = (ms) => isoDay(ms);
 
 export default function view({ el }) {
   let catas = null, news = null, month = null, selDay = '';
-  const lang = () => S.lang || 'es';
+  const lang = () => S.lang || 'ca';
 
   const upcoming = () => (catas || []).filter((c) => !isPast(c) || c.startsAt > Date.now() - 3600000).sort((a, b) => a.startsAt - b.startsAt);
 
@@ -95,9 +99,10 @@ export default function view({ el }) {
         ${catas === null ? '' : shown.length ? html`<div class="grid auto">${shown.map(cataCard)}</div>` : html`<div class="card empty">${t('home.none')}</div>`}
       </section>
       ${news ? html`<section class="sect"><div class="news">${icon('megaphone', 22)}<div><h3>${news.title}</h3><p class="muted small" style="margin:0">${news.body}</p></div></div></section>` : ''}
-      <section class="sect"><div class="private-cta"><h3>${t('home.privateTitle')}</h3><p>${t('home.privateText')}</p><a class="btn primary" href="#/private">${t('home.private')}</a></div></section>
+      <section class="sect"><div class="private-cta"><h3>${t('home.privateTitle')}</h3><p>${t('home.privateText')}</p><div class="cta-row"><a class="btn primary" href="#/private">${t('home.private')}</a></div><div class="cta-contact">${contactBlock()}</div></div></section>
       <div class="sect">${installBanner()}</div>
     `);
+    el.querySelectorAll('img[data-brand]').forEach((img) => img.addEventListener('error', () => { brokenImg.add(img.dataset.brand); render(); }, { once: true }));
   };
 
   const u1 = db.onList('catas', { where: [['published', '==', true]] }, (r) => { catas = r; render(); });

@@ -1,11 +1,14 @@
 /* Panel: solicitudes de cata privada y calendario de fechas libres */
 import { db } from '../../store.js';
+import { S } from '../../state.js';
+import { t } from '../../i18n.js';
 import { html, setHtml, on, formData, toast, modal, fmtDate, fromIsoDay, isoDay } from '../../util.js';
-import { adminTabs, STATUS_ES, pillFor } from './ui.js';
+import { adminTabs, statusLabel, pillFor } from './ui.js';
 import { answerPrivateRequest } from '../../api.js';
 
 export default function view({ el }) {
   let reqs = null, free = [], catas = [], month = new Date(); month.setDate(1);
+  const lang = () => S.lang || 'ca';
   const busyDays = () => {
     const s = new Set(catas.filter((c) => c.published !== false).map((c) => isoDay(c.startsAt)));
     (reqs || []).filter((r) => r.status === 'accepted').forEach((r) => s.add(r.date));
@@ -19,25 +22,26 @@ export default function view({ el }) {
     for (let d = 1; d <= days; d++) {
       const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const cls = [free.includes(iso) ? 'on' : '', busy.has(iso) ? 'busy' : '', iso < today ? 'past' : ''].join(' ');
-      cells.push(html`<button class="${cls}" data-day="${iso}" title="${busy.has(iso) ? 'Ya hay una cata ese día' : ''}">${d}</button>`);
+      cells.push(html`<button class="${cls}" data-day="${iso}" title="${busy.has(iso) ? t('a.priv.busyTitle') : ''}">${d}</button>`);
     }
-    return html`<div class="row between mb"><button class="btn sm" data-month="-1">‹</button><b style="text-transform:capitalize">${new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric' }).format(month)}</b><button class="btn sm" data-month="1">›</button></div>
-      <div class="cal">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((x) => html`<div class="h">${x}</div>`)}${cells}</div>
-      <div class="row wrap small muted mt"><span class="pill ok" style="background:rgba(179,42,77,.5)">Libre para privadas</span><span class="pill gold">Ya hay cata</span></div>`;
+    const wd = Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(lang(), { weekday: 'narrow' }).format(new Date(2024, 0, 1 + i)));
+    return html`<div class="row between mb"><button class="btn sm" data-month="-1">‹</button><b style="text-transform:capitalize">${new Intl.DateTimeFormat(lang(), { month: 'long', year: 'numeric' }).format(month)}</b><button class="btn sm" data-month="1">›</button></div>
+      <div class="cal">${wd.map((x) => html`<div class="h">${x}</div>`)}${cells}</div>
+      <div class="row wrap small muted mt"><span class="pill ok" style="background:rgba(179,42,77,.5)">${t('a.priv.legendFree')}</span><span class="pill gold">${t('a.priv.legendBusy')}</span></div>`;
   };
-  const card = (r) => html`<div class="card"><div class="row between top"><div><h3 style="margin:0">${r.name}</h3><div class="small muted">${r.phone} · ${r.email || ''}</div></div><span class="pill ${pillFor(r.status)}">${STATUS_ES[r.status]}</span></div>
-    <div class="meta mt"><span>📅 ${fmtDate(fromIsoDay(r.date), { weekday: 'long', day: 'numeric', month: 'long' })} · ${r.time}</span><span>👥 ${r.people} personas</span><span>📍 ${r.place}</span></div>
+  const card = (r) => html`<div class="card"><div class="row between top"><div><h3 style="margin:0">${r.name}</h3><div class="small muted">${r.phone} · ${r.email || ''}</div></div><span class="pill ${pillFor(r.status)}">${statusLabel(r.status)}</span></div>
+    <div class="meta mt"><span>📅 ${fmtDate(fromIsoDay(r.date), { weekday: 'long', day: 'numeric', month: 'long' })} · ${r.time}</span><span>👥 ${t('a.priv.people', { n: r.people })}</span><span>📍 ${r.place}</span></div>
     ${r.notes ? html`<p class="muted mt" style="margin-bottom:0">“${r.notes}”</p>` : ''}
-    ${r.status === 'counter' ? html`<p class="small mt gold">Propuesta: ${r.counterDate ? fmtDate(fromIsoDay(r.counterDate)) : ''} ${r.counterNote || ''}</p>` : ''}
-    ${r.status === 'pending' || r.status === 'counter' ? html`<div class="row wrap mt"><button class="btn sm primary" data-answer="accepted" data-id="${r.id}">Aceptar</button><button class="btn sm" data-answer="counter" data-id="${r.id}">Proponer otra fecha</button><button class="btn sm danger" data-answer="rejected" data-id="${r.id}">Rechazar</button></div>` : ''}</div>`;
+    ${r.status === 'counter' ? html`<p class="small mt gold">${t('a.priv.proposal')}: ${r.counterDate ? fmtDate(fromIsoDay(r.counterDate)) : ''} ${r.counterNote || ''}</p>` : ''}
+    ${r.status === 'pending' || r.status === 'counter' ? html`<div class="row wrap mt"><button class="btn sm primary" data-answer="accepted" data-id="${r.id}">${t('a.priv.accept')}</button><button class="btn sm" data-answer="counter" data-id="${r.id}">${t('a.priv.counter')}</button><button class="btn sm danger" data-answer="rejected" data-id="${r.id}">${t('a.priv.reject')}</button></div>` : ''}</div>`;
   const render = () => {
     const pend = (reqs || []).filter((r) => r.status === 'pending' || r.status === 'counter'), done = (reqs || []).filter((r) => !pend.includes(r));
-    setHtml(el, html`${adminTabs('/admin/private')}<h1>Catas privadas</h1>
+    setHtml(el, html`${adminTabs('/admin/private')}<h1>${t('a.tab.private')}</h1>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));align-items:start">
-        <div><h2>Solicitudes ${pend.length ? html`<span class="pill warn">${pend.length}</span>` : ''}</h2>
-          ${reqs === null ? html`<div class="empty">…</div>` : pend.length ? html`<div class="stack">${pend.map(card)}</div>` : html`<div class="card empty">No hay solicitudes pendientes.</div>`}
-          ${done.length ? html`<details class="mt2"><summary class="muted">Historial (${done.length})</summary><div class="stack mt">${done.map(card)}</div></details>` : ''}</div>
-        <div class="card"><h2>Fechas libres</h2><p class="muted small">Toca los días en los que aceptas catas privadas. Los clientes solo verán esos días.</p>${calendar()}</div>
+        <div><h2>${t('a.priv.requests')} ${pend.length ? html`<span class="pill warn">${pend.length}</span>` : ''}</h2>
+          ${reqs === null ? html`<div class="empty">…</div>` : pend.length ? html`<div class="stack">${pend.map(card)}</div>` : html`<div class="card empty">${t('a.priv.none')}</div>`}
+          ${done.length ? html`<details class="mt2"><summary class="muted">${t('a.priv.history', { n: done.length })}</summary><div class="stack mt">${done.map(card)}</div></details>` : ''}</div>
+        <div class="card"><h2>${t('a.priv.free')}</h2><p class="muted small">${t('a.priv.freeHint')}</p>${calendar()}</div>
       </div>`);
   };
   const subs = [
@@ -51,14 +55,14 @@ export default function view({ el }) {
     on(el, 'click', '[data-answer]', (e, b) => {
       const r = reqs.find((x) => x.id === b.dataset.id), kind = b.dataset.answer;
       const upcoming = free.filter((d) => d >= isoDay(Date.now())).slice(0, 20);
-      const m = modal(html`<h3>${kind === 'accepted' ? 'Aceptar solicitud' : kind === 'rejected' ? 'Rechazar solicitud' : 'Proponer otra fecha'}</h3>
+      const m = modal(html`<h3>${kind === 'accepted' ? t('a.priv.ansAccept') : kind === 'rejected' ? t('a.priv.ansReject') : t('a.priv.counter')}</h3>
         <form id="aForm">
-          ${kind === 'counter' ? html`<label class="field"><span>Nueva fecha</span><select name="counterDate" required>${upcoming.map((d) => html`<option value="${d}">${fmtDate(fromIsoDay(d))}</option>`)}</select></label>` : ''}
-          <label class="field"><span>Mensaje para el cliente (opcional)</span><textarea name="note" placeholder="${kind === 'accepted' ? 'Ej.: Te llamo mañana para cerrar detalles.' : ''}"></textarea></label>
-          <button class="btn ${kind === 'rejected' ? 'danger' : 'primary'} block">Enviar respuesta</button></form>`);
+          ${kind === 'counter' ? html`<label class="field"><span>${t('a.priv.newDate')}</span><select name="counterDate" required>${upcoming.map((d) => html`<option value="${d}">${fmtDate(fromIsoDay(d))}</option>`)}</select></label>` : ''}
+          <label class="field"><span>${t('a.priv.msg')}</span><textarea name="note" placeholder="${kind === 'accepted' ? t('a.priv.msgPh') : ''}"></textarea></label>
+          <button class="btn ${kind === 'rejected' ? 'danger' : 'primary'} block">${t('a.priv.send')}</button></form>`);
       m.el.querySelector('#aForm').addEventListener('submit', async (e2) => {
         e2.preventDefault(); const f = formData(e2.target);
-        try { await answerPrivateRequest(r, kind, { counterDate: f.counterDate || '', counterNote: f.note || '' }); m.close(); toast('Respuesta enviada'); } catch (ex) { console.error(ex); toast('No se pudo enviar', 'err'); }
+        try { await answerPrivateRequest(r, kind, { counterDate: f.counterDate || '', counterNote: f.note || '' }); m.close(); toast(t('a.priv.sent')); } catch (ex) { console.error(ex); toast(t('a.priv.sendErr'), 'err'); }
       });
     }),
   ];

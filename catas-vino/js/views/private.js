@@ -6,6 +6,7 @@ import { CONFIG } from '../config.js';
 import { html, setHtml, fmtDate, fromIsoDay, isoDay, on, formData, toast } from '../util.js';
 import { createPrivateRequest } from '../api.js';
 import { icon } from '../icons.js';
+import { contactBlock } from '../contact.js';
 
 export default function view({ el }) {
   if (!loggedIn()) { setHtml(el, html`<div class="card center"><span class="big-ic">${icon('glass', 34, 1.3)}</span><h2>${t('home.private')}</h2><p class="muted">${t('private.intro')}</p><a class="btn primary" href="#/login?next=%2Fprivate">${t('auth.loginOrSignup')}</a></div>`); return; }
@@ -19,7 +20,7 @@ export default function view({ el }) {
       <form class="card" id="pForm">
         ${err ? html`<div class="err">${err}</div>` : ''}
         <div class="field"><span>${t('private.date')}</span>
-          ${dates === null ? html`<div class="muted">…</div>` : list.length ? html`<div class="chips">${list.map((d) => { const ms = fromIsoDay(d); return html`<label><input type="radio" name="date" value="${d}" required><span>${fmtDate(ms, { weekday: 'short' })}<b>${new Date(ms).getDate()}</b>${fmtDate(ms, { month: 'short' })}</span></label>`; })}</div>` : html`<div class="note">${t('private.nodates')}</div>`}
+          ${dates === null ? html`<div class="muted">…</div>` : list.length ? html`<div class="chips">${list.map((d) => { const ms = fromIsoDay(d); return html`<label><input type="radio" name="date" value="${d}" required><span>${fmtDate(ms, { weekday: 'short' })}<b>${new Date(ms).getDate()}</b>${fmtDate(ms, { month: 'short' })}</span></label>`; })}</div>` : html`<div class="note">${t('private.nodates')}</div><div class="mt">${contactBlock()}</div>`}
         </div>
         <div class="grid c2">
           <label class="field"><span>${t('private.time')}</span><input type="time" name="time" required value="20:00"></label>

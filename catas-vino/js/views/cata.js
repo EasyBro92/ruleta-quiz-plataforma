@@ -5,6 +5,7 @@ import { t } from '../i18n.js';
 import { CONFIG } from '../config.js';
 import { html, setHtml, fmtDateTime, fmtDate, fmtTime, money, on, formData, toast, confirmBox } from '../util.js';
 import { icon } from '../icons.js';
+import { contactBlock } from '../contact.js';
 import { bookSeats, cancelBooking, seatsLeft, isFull, isPast, canCancel, cancelDeadline } from '../api.js';
 
 export const mapBlock = (c) => {
@@ -12,10 +13,6 @@ export const mapBlock = (c) => {
   const b = [c.lon - 0.012, c.lat - 0.007, c.lon + 0.012, c.lat + 0.007].join(',');
   return html`<iframe class="map" loading="lazy" title="map" src="https://www.openstreetmap.org/export/embed.html?bbox=${b}&layer=mapnik&marker=${c.lat},${c.lon}"></iframe>
     <div class="row wrap mt"><a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lon}">${icon('route', 16)}${t('cata.route')}</a></div>`;
-};
-export const contactBlock = () => {
-  const b = CONFIG.brand; if (!b.whatsapp && !b.email) return '';
-  return html`<div class="row wrap">${b.whatsapp ? html`<a class="btn sm" target="_blank" rel="noopener" href="https://wa.me/${b.whatsapp}">${icon('chat', 16)}WhatsApp</a>` : ''}${b.email ? html`<a class="btn sm" href="mailto:${b.email}">${icon('mail', 16)}${t('contact.email')}</a>` : ''}</div>`;
 };
 
 export default function view({ el, params }) {

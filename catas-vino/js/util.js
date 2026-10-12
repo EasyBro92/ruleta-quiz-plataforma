@@ -44,8 +44,8 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
 // ---------- Fechas (todo se guarda en milisegundos) ----------
-let LOCALE = 'es';
-export const setLocale = (l) => { LOCALE = l === 'ca' ? 'ca' : l; };
+let LOCALE = 'ca';
+export const setLocale = (l) => { LOCALE = l; };
 const lc = () => LOCALE;
 const okDate = (ms) => { const d = new Date(ms); return Number.isNaN(d.getTime()) ? null : d; };   // fechas incompletas no deben romper la pantalla
 export const fmtDate = (ms, opts = { weekday: 'long', day: 'numeric', month: 'long' }) => { const d = okDate(ms); return d ? new Intl.DateTimeFormat(lc(), opts).format(d) : ''; };

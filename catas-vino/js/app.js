@@ -48,16 +48,16 @@ function navItems() {
 function renderShell(chrome, wide, nav) {
   const lang = CONFIG.languages.map(([c, n]) => `<option value="${c}" ${c === S.lang ? 'selected' : ''}>${esc(n)}</option>`).join('');
   if (!chrome) { setHtml(app(), html`<main class="full" id="view"></main>`); chromeMode = 'none'; return; }
-  const demo = isDemo() ? html`<div class="demo-bar">MODO DEMO · los datos solo existen en este navegador · <a href="#" data-act="demo-info">cuentas de prueba</a> · <a href="#" data-act="demo-reset">reiniciar</a></div>` : '';
+  const demo = isDemo() ? html`<div class="demo-bar">${t('demo.bar')} · <a href="#" data-act="demo-info">${t('demo.accounts')}</a> · <a href="#" data-act="demo-reset">${t('demo.reset')}</a></div>` : '';
   setHtml(app(), html`${demo}
     <header class="topbar">
       <a class="brand" href="#/">${icon('glass', 22, 1.5)}<span>${CONFIG.brand.name}</span></a>
       <span class="grow"></span>
-      <select id="lang" aria-label="Idioma">${raw(lang)}</select>
+      <select id="lang" aria-label="${t('a11y.lang')}">${raw(lang)}</select>
       ${S.user && !S.user.anonymous ? html`<a class="icon-btn" href="#/notices" aria-label="${t('nav.notices')}">${icon('bell', 19)}${S.unread ? html`<span class="dot"></span>` : ''}</a>` : ''}
     </header>
     <main id="view" class="${wide ? 'wide' : ''}"></main>
-    <nav class="nav" aria-label="Navegación">${navItems().map(([k, h, ic, l]) => html`<a href="#${h}" data-nav="${k}" class="${k === nav ? 'on' : ''}">${icon(ic, 22)}${l}</a>`)}</nav>`);
+    <nav class="nav" aria-label="${t('a11y.nav')}">${navItems().map(([k, h, ic, l]) => html`<a href="#${h}" data-nav="${k}" class="${k === nav ? 'on' : ''}">${icon(ic, 22)}${l}</a>`)}</nav>`);
   chromeMode = 'full';
 }
 function markNav(nav, wide) {
@@ -160,8 +160,8 @@ function bindGlobal() {
   document.addEventListener('change', (e) => { if (e.target.id === 'lang') { setLang(e.target.value); if (S.user && !S.user.anonymous && S.profile) db.update(`users/${S.user.uid}`, { lang: e.target.value }).catch(() => {}); } });
   document.addEventListener('click', async (e) => {
     const a = e.target.closest('[data-act]'); if (!a) return;
-    if (a.dataset.act === 'demo-reset') { e.preventDefault(); db.reset(); await auth.signOut(); toast('Datos de demo restaurados'); go('/'); }
-    if (a.dataset.act === 'demo-info') { e.preventDefault(); modal(html`<h3>Cuentas de prueba</h3><p><b>Equipo (administrador):</b><br>admin@demo.com · demo1234</p><p><b>Cliente:</b><br>ana@demo.com · demo1234</p><p class="muted small">Cada pestaña del navegador guarda su propia sesión, así que puedes abrir varias para simular varios jugadores y el presentador.</p><button class="btn block" data-close>OK</button>`); }
+    if (a.dataset.act === 'demo-reset') { e.preventDefault(); db.reset(); await auth.signOut(); toast(t('demo.restored')); go('/'); }
+    if (a.dataset.act === 'demo-info') { e.preventDefault(); modal(html`<h3>${t('demo.accounts')}</h3><p><b>${t('demo.admin')}</b><br>admin@demo.com · demo1234</p><p><b>${t('demo.client')}</b><br>ana@demo.com · demo1234</p><p class="muted small">${t('demo.note')}</p><button class="btn block" data-close>${t('common.ok')}</button>`); }
   });
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); S.installEvent = e; bus.emit('install'); });
   window.addEventListener('db-error', (e) => { const c = e.detail?.code || ''; toast(c === 'permission-denied' ? t('err.noaccess') : t('err.generic'), 'err'); });
@@ -172,9 +172,12 @@ function bindGlobal() {
 async function main() {
   let lang = null;
   try { lang = localStorage.getItem('catas_lang'); } catch { /* nada */ }
-  if (!lang) { const nav = (navigator.language || 'es').slice(0, 2); lang = CONFIG.languages.some(([c]) => c === nav) ? nav : CONFIG.defaultLang; }
+  if (!lang) {
+    const nav = (navigator.language || CONFIG.defaultLang).slice(0, 2);
+    lang = CONFIG.languages.some(([c]) => c === nav) && !(CONFIG.noAutoLang || []).includes(nav) ? nav : CONFIG.defaultLang;
+  }
   S.lang = lang; await loadLang(lang); setLocale(lang); document.documentElement.lang = lang;
-  try { await initStore(); } catch (e) { console.error(e); setHtml(app(), html`<div class="card" style="margin:20px"><h3>No se pudo conectar</h3><p class="muted">${String(e.message || e)}</p></div>`); return; }
+  try { await initStore(); } catch (e) { console.error(e); setHtml(app(), html`<div class="card" style="margin:20px"><h3>${t('err.connect')}</h3><p class="muted">${String(e.message || e)}</p></div>`); return; }
   bindGlobal();
   try { if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch { /* sin service worker (p. ej. dentro de un visor) */ }
   auth.onChange(onAuth);

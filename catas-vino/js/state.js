@@ -3,7 +3,7 @@ export const S = {
   user: null,        // usuario de autenticación {uid,email,name,anonymous}
   profile: null,     // documento users/{uid}
   staff: null,       // 'admin' | 'presenter' | null
-  lang: 'es',
+  lang: 'ca',
   unread: 0,         // avisos sin leer
   installEvent: null,
   pendingProfile: null,

@@ -1,25 +1,21 @@
-/* Categorías de vino y generación automática de preguntas a partir del catálogo */
+/* Categorías de vino y generación automática de preguntas a partir del catálogo.
+   Las etiquetas se ven en el idioma del panel; el texto de la pregunta que se guarda va siempre en catalán
+   (el contenido se escribe una sola vez, en el idioma principal). */
 import { shuffle } from './util.js';
+import { t, tMain } from './i18n.js';
 
-export const CORE_CATS = [
-  { key: 'variety', label: 'Variedad de uva', q: '¿Qué variedad de uva es este vino?' },
-  { key: 'abv', label: 'Graduación alcohólica', q: '¿Qué graduación alcohólica tiene este vino?', unit: ' %' },
-  { key: 'winery', label: 'Bodega', q: '¿De qué bodega es este vino?' },
-  { key: 'origin', label: 'Origen', q: '¿De qué región o denominación de origen es?' },
-  { key: 'wood', label: 'Madera de la barrica', q: '¿En qué tipo de madera ha envejecido?' },
-  { key: 'aging', label: 'Crianza', q: '¿Qué tipo de crianza ha tenido?' },
-  { key: 'vintage', label: 'Añada', q: '¿De qué añada (año de cosecha) es?' },
-];
+const core = (key, unit) => ({ key, unit, get label() { return t('q.l.' + key); }, get q() { return tMain('q.p.' + key); } });
+export const CORE_CATS = [core('variety'), core('abv', ' %'), core('winery'), core('origin'), core('wood'), core('aging'), core('vintage')];
 
 const GENERIC = {
-  variety: ['Tempranillo', 'Garnacha', 'Albariño', 'Verdejo', 'Mencía', 'Monastrell', 'Godello', 'Cabernet Sauvignon', 'Syrah', 'Chardonnay', 'Macabeo', 'Graciano'],
-  origin: ['Rioja', 'Ribera del Duero', 'Rías Baixas', 'Rueda', 'Priorat', 'Jumilla', 'Bierzo', 'Toro', 'Penedès', 'Navarra', 'Valdeorras', 'Somontano'],
-  wood: ['Roble francés', 'Roble americano', 'Sin madera (acero inoxidable)', 'Castaño', 'Roble húngaro', 'Roble francés y americano'],
-  aging: ['Sin crianza en barrica', '6 meses en barrica', '12 meses en barrica', '18 meses en barrica', '24 meses en barrica', '36 meses en barrica'],
+  variety: ['Tempranillo', 'Garnatxa', 'Albariño', 'Verdejo', 'Mencía', 'Monastrell', 'Godello', 'Cabernet Sauvignon', 'Syrah', 'Chardonnay', 'Macabeu', 'Xarel·lo', 'Carinyena', 'Sumoll'],
+  origin: ['Rioja', 'Ribera del Duero', 'Rías Baixas', 'Rueda', 'Priorat', 'Jumilla', 'Bierzo', 'Toro', 'Penedès', 'Navarra', 'Valdeorras', 'Somontano', 'Empordà', 'Montsant', 'Terra Alta'],
+  wood: ['Roure francès', 'Roure americà', 'Sense fusta (acer inoxidable)', 'Castanyer', 'Roure hongarès', 'Roure francès i americà'],
+  aging: ['Sense criança en barrica', '6 mesos en barrica', '12 mesos en barrica', '18 mesos en barrica', '24 mesos en barrica', '36 mesos en barrica'],
 };
 
 export function allCats(extra = []) {
-  return [...CORE_CATS, ...extra.map((e) => ({ key: e.key, label: e.label, q: `¿Cuál es el dato «${e.label}» de este vino?`, custom: true }))];
+  return [...CORE_CATS, ...extra.map((e) => ({ key: e.key, label: e.label, q: tMain('q.p.custom', { label: e.label }), custom: true }))];
 }
 
 const fmtAbv = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
@@ -46,7 +42,7 @@ function distractors(key, correct, wines, wineId) {
 export function questionFor(wine, key, wines, cats = CORE_CATS) {
   const value = wine.attrs?.[key];
   if (value == null || String(value).trim() === '') return null;
-  const cat = cats.find((c) => c.key === key) || { q: '¿Cuál es el dato de este vino?' };
+  const cat = cats.find((c) => c.key === key) || { q: tMain('q.p.generic') };
   const display = key === 'abv' ? fmtAbv(parseFloat(String(value).replace(',', '.'))) : String(value).trim();
   const wrong = distractors(key, display, wines, wine.id);
   const options = shuffle([display, ...wrong]);

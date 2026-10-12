@@ -7,18 +7,20 @@
    ============================================================ */
 export const CONFIG = {
   brand: {
-    name: 'Catas de vino',          // nombre provisional, cámbialo cuando lo tengas
-    tagline: 'Cata, juega y gana',
+    name: 'Catarsi',
     emoji: '🍷',
-    // Portada: tu logo y tu foto. Sube los archivos a la carpeta img/ y escribe aquí su ruta
-    // (por ejemplo 'img/logo.png' y 'img/foto.jpg'). Mientras estén vacíos se ve un marcador.
-    logo: '',
-    photo: '',
-    owner: '',         // tu nombre, si quieres que aparezca bajo la foto
+    // Portada: logo y foto de https://www.salutcatarsi.cat/ (se cargan desde tu web).
+    // Cuando quieras, descarga los dos archivos a la carpeta img/ y pon aquí su ruta
+    // (por ejemplo 'img/logo.png' y 'img/foto.jpg') para que la app no dependa de la web.
+    logo: 'https://www.salutcatarsi.cat/wp-content/uploads/2022/12/LOGO_CATARSI.png',
+    photo: 'https://www.salutcatarsi.cat/wp-content/uploads/2025/02/catarsi_jordi-707x1024.png',
+    owner: 'Jordi Roura',
     intro: '',         // texto de presentación propio; vacío = el de las traducciones (home.intro)
+    web: 'https://www.salutcatarsi.cat/',
     // Datos de contacto que se muestran a los clientes (déjalos vacíos para ocultarlos)
     whatsapp: '',      // por ejemplo '34600111222' (con prefijo de país, sin +)
-    email: '',
+    email: 'hola@salutcatarsi.cat',
+    instagram: 'salut_catarsi',   // usuario de Instagram, sin @
   },
 
   firebase: {
@@ -31,12 +33,14 @@ export const CONFIG = {
   },
   firebaseSdkVersion: '10.14.1',
 
-  // Idiomas disponibles para los clientes
+  // Idiomas disponibles para los clientes. El catalán es el idioma principal: todo el contenido
+  // (tasts, noticias, premios) se escribe en catalán y la interfaz se traduce a los demás.
   languages: [
-    ['es', 'Español'], ['en', 'English'], ['fr', 'Français'],
-    ['de', 'Deutsch'], ['it', 'Italiano'], ['ca', 'Català'],
+    ['ca', 'Català'], ['es', 'Español'], ['en', 'English'], ['fr', 'Français'],
+    ['de', 'Deutsch'], ['it', 'Italiano'],
   ],
-  defaultLang: 'es',
+  defaultLang: 'ca',
+  noAutoLang: ['es'],   // idiomas que NO se eligen solos según el navegador (quien tiene el móvil en castellano ve el catalán; puede cambiar a mano)
 
   // Reglas de negocio
   cancelHours: 48,          // plazo para cancelar desde la app

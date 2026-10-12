@@ -63,7 +63,7 @@ export async function shareResult({ title, nick, rank, players, score, correct, 
   g.font = '44px system-ui, sans-serif'; g.fillStyle = '#b8a8a6'; g.fillText(t('share.of', { n: players }), W / 2, 850);
   g.fillStyle = '#f6efe4'; g.font = 'bold 72px Georgia, serif'; g.fillText(nick, W / 2, 990);
   g.font = '52px system-ui, sans-serif'; g.fillStyle = '#d6af5c'; g.fillText(`${score} pts · ${correct}/${total} ✓`, W / 2, 1080);
-  g.font = '34px system-ui, sans-serif'; g.fillStyle = '#b8a8a6'; g.fillText(CONFIG.brand.tagline, W / 2, 1230);
+  g.font = '34px system-ui, sans-serif'; g.fillStyle = '#b8a8a6'; g.fillText(t('brand.tagline'), W / 2, 1230);
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
   const file = new File([blob], 'cata.png', { type: 'image/png' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: CONFIG.brand.name, text: t('share.text', { rank, title }) }); return; } catch (e) { if (e.name === 'AbortError') return; } }
