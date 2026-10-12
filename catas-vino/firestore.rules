@@ -1,0 +1,214 @@
+rules_version = '2';
+
+// =====================================================================
+//  Reglas de seguridad de Firestore para "Catas de vino"
+//
+//  Cómo usarlas: Firebase Console > Firestore Database > Reglas > pega este
+//  archivo entero > Publicar. (Detalles en el README.)
+//
+//  Roles:
+//   · Visitante / invitado ......... sesión anónima (entra a una partida con código o QR)
+//   · Usuario registrado ........... sesión con email, Google o Apple
+//   · Equipo (staff) ............... documento  staff/{uid}  con  role: 'admin' | 'presenter'
+//
+//  IMPORTANTE: estas reglas NO se han podido probar contra un Firebase real en el
+//  entorno donde se construyó la app. Pruébalas con el simulador de reglas de la
+//  consola (o con el emulador) antes de abrir la app al público.
+//
+//  Límite conocido: sin Cloud Functions, los contadores de plazas (seatsTaken /
+//  waitCount) los actualiza el propio cliente dentro de una transacción. Las reglas
+//  los acotan, pero un usuario malintencionado con conocimientos podría falsearlos.
+//  Para producción seria, mover reservas y puntos a Cloud Functions (fase 2).
+// =====================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- utilidades ----------
+    function signedIn() { return request.auth != null; }
+    function isRegistered() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function isStaff() { return signedIn() && exists(/databases/$(database)/documents/staff/$(request.auth.uid)); }
+    function isAdmin() { return isStaff() && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'admin'; }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // ---------- equipo ----------
+    match /staff/{uid} {
+      allow get: if isOwner(uid) || isStaff();
+      allow list: if isStaff();
+      allow write: if isAdmin();               // el primer admin se crea a mano en la consola (ver README)
+    }
+
+    // ---------- usuarios registrados ----------
+    match /users/{uid} {
+      allow get: if isOwner(uid) || isStaff();
+      allow list: if isStaff();
+      allow create: if isRegistered() && isOwner(uid) && request.resource.data.uid == uid;
+      allow update: if (isRegistered() && isOwner(uid) && !changed().hasAny(['uid', 'email', 'createdAt'])) || isStaff();
+
+      // reservas del usuario (copia para "Mis reservas")
+      match /bookings/{cid} {
+        allow read: if isOwner(uid) || isStaff();
+        allow create: if isOwner(uid) || isStaff();
+        // el dueño, el equipo o quien sube de la lista de espera a esa persona
+        allow update: if isOwner(uid) || isStaff()
+          || (isRegistered() && resource.data.status == 'waitlist' && changed().hasOnly(['status']) && request.resource.data.status == 'confirmed');
+      }
+
+      // avisos dentro de la app
+      match /notices/{nid} {
+        allow read: if isOwner(uid);
+        // cualquiera con sesión puede avisar a otro usuario (p. ej. "se ha liberado una plaza")
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['type', 'data', 'link', 'read', 'createdAt'])
+          && request.resource.data.read == false;
+        allow update: if isOwner(uid) && changed().hasOnly(['read']);
+      }
+    }
+
+    // ---------- catas y reservas ----------
+    match /catas/{cid} {
+      allow get, list: if resource.data.published == true || isStaff();
+      allow create, delete: if isStaff();
+      allow update: if isStaff()
+        || (signedIn()
+            && changed().hasOnly(['seatsTaken', 'waitCount'])
+            && request.resource.data.seatsTaken >= 0
+            && request.resource.data.waitCount >= 0
+            && request.resource.data.seatsTaken <= request.resource.data.capacity
+            && request.resource.data.seatsTaken - resource.data.seatsTaken <= 20
+            && resource.data.seatsTaken - request.resource.data.seatsTaken <= 20);
+
+      // reservas: sin datos personales (nombre, teléfono... están en /contacts)
+      match /bookings/{uid} {
+        allow get: if isOwner(uid) || isStaff();
+        allow list: if signedIn();             // la lista de espera se avanza desde el cliente
+        allow create: if (isOwner(uid) && request.resource.data.uid == uid
+                          && request.resource.data.status in ['confirmed', 'waitlist']
+                          && request.resource.data.seats is int
+                          && request.resource.data.seats >= 1 && request.resource.data.seats <= 20)
+                      || isStaff();
+        allow update: if isStaff()
+          // volver a reservar tras haber cancelado
+          || (isOwner(uid) && resource.data.status == 'cancelled' && request.resource.data.uid == uid
+              && request.resource.data.status in ['confirmed', 'waitlist']
+              && request.resource.data.seats is int && request.resource.data.seats >= 1 && request.resource.data.seats <= 20)
+          // cancelar la propia
+          || (isOwner(uid) && changed().hasOnly(['status', 'cancelledAt']) && request.resource.data.status == 'cancelled')
+          // subir a alguien de la lista de espera
+          || (isRegistered() && resource.data.status == 'waitlist' && changed().hasOnly(['status', 'promotedAt']) && request.resource.data.status == 'confirmed');
+      }
+
+      // datos personales de quien reserva: solo él mismo y el equipo
+      match /contacts/{uid} {
+        allow read, write: if isOwner(uid) || isStaff();
+      }
+    }
+
+    // ---------- catas privadas ----------
+    match /privateRequests/{rid} {
+      allow create: if isRegistered() && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending';
+      allow get, list: if isStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isStaff();
+    }
+
+    // ---------- ajustes, catálogo y preguntas ----------
+    match /settings/{doc} {
+      allow read: if true;                     // calendario de fechas libres y categorías
+      allow write: if isStaff();
+    }
+    match /wines/{id}     { allow read, write: if isStaff(); }
+    match /questions/{id} { allow read, write: if isStaff(); }   // contienen la respuesta correcta
+
+    match /announcements/{id} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    // ---------- partidas en directo ----------
+    match /sessions/{sid} {
+      allow read: if signedIn();               // invitados incluidos (sesión anónima)
+      allow write: if isStaff();               // el presentador es el árbitro
+
+      // preguntas con la respuesta correcta: solo el equipo
+      match /qs/{i} { allow read, write: if isStaff(); }
+
+      match /players/{uid} {
+        allow read: if signedIn();
+        allow create: if isOwner(uid)
+          && request.resource.data.uid == uid
+          && request.resource.data.score == 0 && request.resource.data.correct == 0 && request.resource.data.answered == 0
+          && request.resource.data.registered == isRegistered()
+          && request.resource.data.nick is string && request.resource.data.nick.size() >= 1 && request.resource.data.nick.size() <= 24
+          && get(/databases/$(database)/documents/sessions/$(sid)).data.status != 'ended';
+        allow update: if isStaff()
+          || (isOwner(uid) && changed().hasOnly(['nick', 'teamId', 'lang']) && request.resource.data.nick.size() <= 24);
+        allow delete: if isStaff();
+      }
+
+      match /teams/{tid} {
+        allow read: if signedIn();
+        allow create: if isStaff()
+          || (signedIn() && get(/databases/$(database)/documents/sessions/$(sid)).data.teamMode == 'free'
+              && request.resource.data.kind == 'free');
+        allow update, delete: if isStaff();
+      }
+
+      // cada participante solo puede crear SU respuesta, mientras la pregunta está abierta, y no cambiarla
+      match /answers/{aid} {
+        allow get: if isStaff() || (signedIn() && aid.matches('^[0-9]+_' + request.auth.uid + '$'));
+        allow list: if isStaff();
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['uid', 'index', 'choice', 'at'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.index is int
+          && aid == string(request.resource.data.index) + '_' + request.auth.uid
+          && request.resource.data.choice is int && request.resource.data.choice >= 0 && request.resource.data.choice < 8
+          && request.resource.data.at == request.time
+          && get(/databases/$(database)/documents/sessions/$(sid)).data.status == 'question'
+          && get(/databases/$(database)/documents/sessions/$(sid)).data.cur.open == true
+          && get(/databases/$(database)/documents/sessions/$(sid)).data.cur.index == request.resource.data.index
+          && exists(/databases/$(database)/documents/sessions/$(sid)/players/$(request.auth.uid));
+        allow update, delete: if isStaff();    // el presentador marca acierto y puntos
+      }
+
+      match /ratings/{uid} {
+        allow read: if isStaff() || isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.uid == uid
+          && request.resource.data.stars is int && request.resource.data.stars >= 1 && request.resource.data.stars <= 5
+          && request.resource.data.comment is string && request.resource.data.comment.size() <= 200;
+      }
+    }
+
+    // ---------- ranking acumulado, resultados y premios ----------
+    match /leaderboard/{uid} {
+      allow read: if true;
+      allow write: if isStaff();               // lo escribe el presentador al terminar la partida
+    }
+
+    match /results/{id} {
+      allow get: if isStaff() || (signedIn() && id.matches('^' + request.auth.uid + '_.*'));
+      allow list: if isStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if isStaff();
+    }
+
+    match /rewards/{id} {
+      allow read: if resource.data.active == true || isStaff();
+      allow write: if isStaff();
+    }
+
+    match /redemptions/{id} {
+      allow get, list: if isStaff() || (signedIn() && resource.data.uid == request.auth.uid);
+      // canjear: el coste debe ser el del premio y el usuario debe tener al menos esos puntos
+      allow create: if isRegistered()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status in ['active', 'entered']
+        && request.resource.data.cost == get(/databases/$(database)/documents/rewards/$(request.resource.data.rewardId)).data.cost
+        && get(/databases/$(database)/documents/leaderboard/$(request.auth.uid)).data.points >= request.resource.data.cost;
+      allow update, delete: if isStaff();      // marcar como usado / anulado / ganador
+    }
+
+    // todo lo demás, cerrado
+    match /{document=**} { allow read, write: if false; }
+  }
+}

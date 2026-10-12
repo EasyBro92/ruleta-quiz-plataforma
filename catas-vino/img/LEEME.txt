@@ -1,0 +1,11 @@
+Aquí van tu logo y tu foto.
+
+1. Copia tus archivos en esta carpeta, por ejemplo:
+     logo.png   (logo con fondo transparente, ~600 px de ancho)
+     foto.jpg   (tu foto, vertical, ~900 x 1100 px; que la cara quede en la parte de arriba)
+2. Abre js/config.js y rellena, dentro de brand:
+     logo:  'img/logo.png',
+     photo: 'img/foto.jpg',
+     owner: 'Tu nombre',            (opcional, aparece bajo la foto)
+     intro: 'Tu texto de presentación',   (opcional; si lo dejas vacío se usa el texto de ejemplo)
+3. Sube los cambios y aumenta VERSION en sw.js (catas-v3, catas-v4...) para que los móviles vean lo nuevo.
