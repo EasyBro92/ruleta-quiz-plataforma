@@ -3,17 +3,20 @@ import { db } from '../store.js';
 import { S, bus } from '../state.js';
 import { t } from '../i18n.js';
 import { CONFIG } from '../config.js';
-import { html, setHtml, fmtDate, fmtTime, dayNum, monthShort, money, isoDay, fromIsoDay } from '../util.js';
+import { html, setHtml, fmtDate, fmtTime, dayNum, monthShort, money, isoDay, fromIsoDay, skeleton } from '../util.js';
+import { countdown } from '../countdown.js';
 import { seatsLeft, isFull, isPast } from '../api.js';
 import { icon, portraitPlaceholder } from '../icons.js';
 import { contactBlock } from '../contact.js';
 
 export const cataCard = (c) => {
   const left = seatsLeft(c), pct = c.capacity ? Math.min(100, Math.round(((c.seatsTaken || 0) / c.capacity) * 100)) : 0;
+  const cd = countdown(c.startsAt, c.durationMin);
   return html`<a class="card cata ${c.image ? 'has-photo' : ''}" href="#/cata/${c.id}">
     ${c.image ? html`<div class="cata-photo"><img src="${c.image}" alt="" loading="lazy"></div>` : ''}
     <div class="date"><b>${dayNum(c.startsAt)}</b><span>${monthShort(c.startsAt)}</span></div>
     <div class="grow">
+      ${cd ? html`<span class="cd">${cd}</span>` : ''}
       <h3>${c.title}</h3>
       <div class="meta"><span>${icon('clock', 15)}${fmtTime(c.startsAt)}</span><span>${icon('pin', 15)}${c.address || '—'}</span><span>${icon('euro', 15)}${money(c.price)}</span></div>
       <div class="seatbar"><i style="width:${pct}%"></i></div>
@@ -83,7 +86,7 @@ function cover(next) {
     <p class="intro">${b.intro || t('home.intro')}</p>
     ${next ? html`<a class="next-card" href="#/cata/${next.id}">
       <div class="date"><b>${dayNum(next.startsAt)}</b><span>${monthShort(next.startsAt)}</span></div>
-      <div class="grow"><span class="next-label">${t('home.next')}</span><h3>${next.title}</h3>
+      <div class="grow"><span class="next-label">${t('home.next')}${countdown(next.startsAt, next.durationMin) ? ' · ' + countdown(next.startsAt, next.durationMin) : ''}</span><h3>${next.title}</h3>
         <div class="meta"><span>${icon('clock', 15)}${fmtTime(next.startsAt)}</span><span>${icon('pin', 15)}${next.address || '—'}</span></div>
         <div class="small muted next-seats">${isFull(next) ? t('cata.full') + ' · ' + t('cata.waitlist') : t('cata.left', { n: seatsLeft(next) })}</div></div>
       <span class="btn primary sm">${t('home.nextSee')}</span></a>` : ''}
@@ -94,7 +97,7 @@ function cover(next) {
 const keyOf = (ms) => isoDay(ms);
 
 export default function view({ el }) {
-  let catas = null, news = null, month = null, selDay = '', carKey = '';
+  let catas = null, news = null, month = null, selDay = '', carKey = '', live = null;
   const lang = () => S.lang || 'ca';
 
   const upcoming = () => (catas || []).filter((c) => !isPast(c) || c.startsAt > Date.now() - 3600000).sort((a, b) => a.startsAt - b.startsAt);
@@ -131,6 +134,10 @@ export default function view({ el }) {
     </div>`;
   }
 
+  // aviso «Ara en directe»: solo se repinta su hueco, para no rehacer toda la portada con cada pregunta de la partida
+  const liveBanner = () => (live ? html`<a class="live-banner" href="#/join/${live.code}"><span class="live-dot" aria-hidden="true"></span><span class="grow"><b>${t('home.live')}</b><span class="live-title">${live.title}</span></span><span class="btn sm">${t('home.liveJoin')}</span></a>` : '');
+  const pickLive = (l) => l.filter((s) => s.announce === true && s.status !== 'ended' && Date.now() - (s.createdAt || 0) < 12 * 3600000).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0] || null;
+
   const render = () => {
     const list = upcoming();
     if (catas && !month) { const f = list[0] ? new Date(list[0].startsAt) : new Date(); month = { y: f.getFullYear(), m: f.getMonth() }; }
@@ -141,12 +148,13 @@ export default function view({ el }) {
     const keepLeft = oldTrack && carKey === selDay + '|' + (month ? month.y + '-' + month.m : '') ? oldTrack.scrollLeft : 0;
     carKey = selDay + '|' + (month ? month.y + '-' + month.m : '');
     setHtml(el, html`
+      <div id="liveSlot">${liveBanner()}</div>
       ${cover(catas && list[0] && !isPast(list[0]) ? list[0] : null)}
       <section class="sect" id="calendario">
         <h2>${t('home.upcoming')}</h2>
-        ${month ? calendar(list) : html`<div class="empty">…</div>`}
+        ${month ? calendar(list) : skeleton('calendar')}
         ${selDay ? html`<div class="list-head"><h3>${t('cal.day', { d: fmtDate(selDate, { weekday: 'long', day: 'numeric', month: 'long' }) })}</h3><span class="filter">${t('cal.all')}<button type="button" data-act="clear-day" aria-label="${t('cal.all')}">×</button></span></div>` : html`<div class="mt2"></div>`}
-        ${catas === null ? '' : shown.length ? carousel(shown) : html`<div class="card empty">${t('home.none')}</div>`}
+        ${catas === null ? skeleton('cards') : shown.length ? carousel(shown) : html`<div class="card empty">${t('home.none')}</div>`}
       </section>
       ${news ? html`<section class="sect"><div class="news">${icon('megaphone', 22)}<div><h3>${news.title}</h3><p class="muted small" style="margin:0">${news.body}</p></div></div></section>` : ''}
       <section class="sect"><div class="private-cta"><h3>${t('home.privateTitle')}</h3><p>${t('home.privateText')}</p><div class="cta-row"><a class="btn primary" href="#/private">${t('home.private')}</a></div><div class="cta-contact">${contactBlock()}</div></div></section>
@@ -163,6 +171,7 @@ export default function view({ el }) {
   };
 
   const u1 = db.onList('catas', { where: [['published', '==', true]] }, (r) => { catas = r; render(); });
+  const u4 = db.onList('sessions', { where: [['announce', '==', true]] }, (l) => { const n = pickLive(l); if (n?.id === live?.id && n?.title === live?.title) return; live = n; const slot = el.querySelector('#liveSlot'); if (slot) setHtml(slot, liveBanner()); });
   const u2 = db.onList('announcements', { orderBy: [['createdAt', 'desc']], limit: 1 }, (r) => { news = r[0] || null; render(); });
   const u3 = bus.on('install', render);
   const click = async (e) => {
@@ -183,5 +192,5 @@ export default function view({ el }) {
   };
   el.addEventListener('click', click);
   render();
-  return () => { u1(); u2(); u3(); el.removeEventListener('click', click); };
+  return () => { u1(); u2(); u3(); u4(); el.removeEventListener('click', click); };
 }

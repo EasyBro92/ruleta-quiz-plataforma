@@ -2,15 +2,15 @@
 import { db, auth } from '../store.js';
 import { t } from '../i18n.js';
 import { CONFIG } from '../config.js';
-import { html, setHtml, on, sfx, isMuted, setMuted, confetti, raw } from '../util.js';
+import { html, setHtml, on, sfx, isMuted, setMuted, celebrate, raw } from '../util.js';
 import { standings, teamStandings, findSessionByCode, fastestLabel } from '../game.js';
-import { ring, updateRing, mediaBlock, optionsView, lbList, podium } from '../ui-game.js';
+import { ring, updateRing, mediaBlock, optionsView, lbList, podium, floatEmoji, clearFloat } from '../ui-game.js';
 import { qrSvg } from '../vendor/qr.js';
 
 export default function view({ el, params }) {
   const code = params.code.toUpperCase();
   if (!auth.current) { auth.anonymous(); return; }   // la app vuelve a cargar esta pantalla al iniciar sesión
-  let sid = null, s = null, players = [], teams = [], timer = null, startLocal = 0, lastIdx = -2, lastSig = '', lastStatus = '', subs = [], stopped = false;
+  let sid = null, s = null, players = [], teams = [], timer = null, startLocal = 0, lastIdx = -2, lastSig = '', lastStatus = '', subs = [], stopped = false, nPlayers = -1, seenReact = new Map(), reactReady = false, lastPop = 0;
 
   const joinUrl = () => `${location.origin}${location.pathname}#/join/${s.code}`;
   const sig = () => JSON.stringify([s?.status, s?.qIndex, s?.cur?.open, s?.reveal?.index, s?.answeredCount, players.map((p) => p.id + ':' + p.score + ':' + p.nick).join(), teams.map((x) => x.id + x.name).join()]);
@@ -37,7 +37,7 @@ export default function view({ el, params }) {
         <div class="cols"><div>${lbList(rank, '', { limit: 10 })}</div><div>${ts.length > 1 ? html`<h3>${t('game.teams')}</h3>${lbList(ts.map((x) => ({ ...x, nick: x.name })), '', { limit: 6, colorOf: (x) => x.color })}` : ''}</div></div>`;
     }
     setHtml(el, html`<div class="screen"><div class="row between mb"><div class="brand"><span class="logo">${CONFIG.brand.emoji}</span><span>${s.title}</span></div><div class="row"><span class="pill gold">${s.code}</span><button class="icon-btn" data-act="mute">${isMuted() ? '🔇' : '🔊'}</button></div></div>${body}</div>`);
-    if (s.status === 'ended' && lastStatus !== 'ended') { confetti(160); sfx.fanfare(); }
+    if (s.status === 'ended' && lastStatus !== 'ended') celebrate();
     lastStatus = s.status;
   }
   const remaining = () => (s?.cur ? Math.max(0, s.cur.durationSec - (Date.now() - startLocal) / 1000) : 0);
@@ -55,12 +55,17 @@ export default function view({ el, params }) {
         if (s.status === 'reveal' && lastStatus !== 'reveal') sfx.good();
         render();
       }),
-      db.onList(`sessions/${sid}/players`, {}, (l) => { players = l; render(); }),
+      db.onList(`sessions/${sid}/players`, {}, (l) => { if (nPlayers >= 0 && l.length > nPlayers) sfx.join(); nPlayers = l.length; players = l; render(); }),
+      // reacciones del público: la primera lectura solo apunta lo que ya había; después, cada cambio sale flotando
+      db.onList(`sessions/${sid}/reactions`, {}, (l) => {
+        l.forEach((r) => { const prev = seenReact.get(r.id); seenReact.set(r.id, r.n); if (reactReady && r.n !== prev) { floatEmoji(r.emoji, { big: true }); if (Date.now() - lastPop > 250) { sfx.pop(); lastPop = Date.now(); } } });
+        reactReady = true;
+      }),
       db.onList(`sessions/${sid}/teams`, {}, (l) => { teams = l; render(); }),
     ];
   })();
   timer = setInterval(tick, 250);
   const off = on(el, 'click', '[data-act="mute"]', () => { setMuted(!isMuted()); sfx.unlock(); render(true); });
   setHtml(el, html`<div class="screen center"><div class="boot-glass">🍷</div></div>`);
-  return () => { stopped = true; clearInterval(timer); subs.forEach((f) => f()); off(); };
+  return () => { stopped = true; clearInterval(timer); clearFloat(); subs.forEach((f) => f()); off(); };
 }

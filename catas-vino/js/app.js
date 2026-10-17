@@ -98,6 +98,7 @@ async function route() {
   if (chromeMode !== (chrome ? 'full' : 'none') || !document.getElementById('view')) renderShell(chrome, hit.opts.wide, hit.opts.nav); else if (chrome) markNav(hit.opts.nav, hit.opts.wide);
   const el = document.getElementById('view');
   window.scrollTo(0, 0);
+  el.classList.remove('view-in'); void el.offsetWidth; el.classList.add('view-in');      // transición suave entre pantallas
   try {
     const mod = await import(`./views/${hit.view}.js`);
     if (my !== token) return;

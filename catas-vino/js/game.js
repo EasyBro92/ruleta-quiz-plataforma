@@ -15,12 +15,12 @@ export async function findSessionByCode(code) {
 }
 
 /** Crea la partida: copia las preguntas elegidas y deja todo en la sala de espera. */
-export async function createSession({ title, cataId, questions, teamMode, tables = [], createdBy }) {
+export async function createSession({ title, cataId, questions, teamMode, tables = [], createdBy, announce = true }) {
   let code = joinCode(4);
   for (let i = 0; i < 15; i++) { const ex = await findSessionByCode(code); if (!ex) break; code = joinCode(4); }
   const sid = rid();
   const ops = [
-    ['set', sp(sid), { code, title, cataId: cataId || '', createdBy, createdAt: db.ts(), status: 'lobby', teamMode, total: questions.length, qIndex: -1, cur: null, reveal: null, final: null, answeredCount: 0 }],
+    ['set', sp(sid), { code, title, cataId: cataId || '', createdBy, createdAt: db.ts(), status: 'lobby', announce: !!announce, teamMode, total: questions.length, qIndex: -1, cur: null, reveal: null, final: null, answeredCount: 0 }],
   ];
   questions.forEach((q, i) => {
     const { id, createdAt, ...rest } = q;
@@ -47,6 +47,11 @@ export async function joinSession(sid, uid, { nick, teamId = '', registered = fa
 
 export async function submitAnswer(sid, uid, index, choice) {
   await db.set(`${sp(sid)}/answers/${index}_${uid}`, { uid, index, choice, at: db.ts() });
+}
+
+/** Una sola reacción por persona (se sobrescribe): así nunca se acumulan documentos. */
+export async function sendReaction(sid, uid, emoji) {
+  await db.set(`${sp(sid)}/reactions/${uid}`, { uid, emoji, n: Date.now(), at: db.ts() });
 }
 
 export async function rate(sid, uid, stars, comment) {
@@ -119,7 +124,7 @@ export async function endSession(sid) {
   const rank = standings(players);
   const tRank = teamStandings(players, teams);
   const final = { top: rank.slice(0, 10).map((p) => ({ uid: p.id, nick: p.nick, score: p.score || 0, teamId: p.teamId || '' })), teams: tRank.map((t) => ({ id: t.id, name: t.name, color: t.color, score: t.score, members: t.members })), players: rank.length };
-  await db.update(sp(sid), { status: 'ended', endedAt: db.ts(), 'cur.open': false, final });
+  await db.update(sp(sid), { status: 'ended', announce: false, endedAt: db.ts(), 'cur.open': false, final });
   const ops = [];
   for (let idx = 0; idx < rank.length; idx++) {
     const p = rank[idx];

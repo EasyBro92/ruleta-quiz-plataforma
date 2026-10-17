@@ -45,9 +45,29 @@ export const lbList = (items, meId = '', { limit = 99, colorOf } = {}) => html`<
 
 export function podium(top) {
   const [a, b, c] = [top[0], top[1], top[2]];
-  const step = (p, cls, n) => p ? html`<div class="step ${cls}"><div class="who">${p.nick || p.name}</div><div class="sc">${p.score ?? p.points} pts</div><div class="bar">${n}</div></div>` : html`<div class="step ${cls}"></div>`;
+  const step = (p, cls, n) => p ? html`<div class="step ${cls}">${n === 1 ? html`<div class="crown" aria-hidden="true">👑</div>` : ''}<div class="who">${p.nick || p.name}</div><div class="sc">${p.score ?? p.points} pts</div><div class="bar">${n}</div></div>` : html`<div class="step ${cls}"></div>`;
   return html`<div class="podium">${step(b, 'p2', 2)}${step(a, 'p1', 1)}${step(c, 'p3', 3)}</div>`;
 }
+
+// ---------- reacciones con emojis (el público las envía y salen flotando en la pantalla grande) ----------
+export const REACTIONS = ['🍷', '👏', '🔥', '😂', '🤩'];
+export const reactBar = () => html`<div class="react-bar" role="group" aria-label="${t('game.react')}">${REACTIONS.map((e) => html`<button type="button" data-react="${e}" aria-label="${e}">${e}</button>`)}</div>`;
+
+/** Hace subir un emoji por la pantalla. big = pantalla grande. */
+export function floatEmoji(emoji, { big = false } = {}) {
+  let layer = document.querySelector('.react-layer');
+  if (!layer) { layer = document.createElement('div'); layer.className = 'react-layer'; layer.setAttribute('aria-hidden', 'true'); document.body.appendChild(layer); }
+  if (layer.childElementCount > 60) return;
+  const e = document.createElement('span');
+  e.className = 'fl' + (big ? ' big' : '');
+  e.textContent = emoji;
+  e.style.left = 6 + Math.random() * 88 + '%';
+  e.style.setProperty('--dx', Math.round(Math.random() * 90 - 45) + 'px');
+  e.style.animationDuration = 2.6 + Math.random() * 1.4 + 's';
+  e.addEventListener('animationend', () => e.remove(), { once: true });
+  layer.appendChild(e);
+}
+export const clearFloat = () => document.querySelector('.react-layer')?.remove();
 
 /** Imagen para compartir el resultado (Web Share si existe; si no, descarga). */
 export async function shareResult({ title, nick, rank, players, score, correct, total }) {

@@ -2,7 +2,7 @@
 import { db } from '../store.js';
 import { S, loggedIn } from '../state.js';
 import { t } from '../i18n.js';
-import { html, setHtml, fmtDateTime, fmtDate, fromIsoDay } from '../util.js';
+import { html, setHtml, fmtDateTime, fmtDate, fromIsoDay, skeleton } from '../util.js';
 import { icon } from '../icons.js';
 
 export default function view({ el }) {
@@ -19,7 +19,7 @@ export default function view({ el }) {
     setHtml(el, html`
       <h1>${t('nav.mine')}</h1>
       ${soon.map((b) => html`<div class="note mb">⏰ ${t('mine.reminder', { title: b.title, date: fmtDateTime(b.startsAt) })}</div>`)}
-      ${books === null ? html`<div class="empty">…</div>` : up.length ? html`<div class="stack">${up.map(row)}</div>` : html`<div class="card empty"><span class="big-ic">${icon('glass', 34, 1.3)}</span>${t('mine.none')}<div class="mt"><a class="btn primary" href="#/">${t('home.upcoming')}</a></div></div>`}
+      ${books === null ? skeleton('rows') : up.length ? html`<div class="stack">${up.map(row)}</div>` : html`<div class="card empty"><span class="big-ic">${icon('glass', 34, 1.3)}</span>${t('mine.none')}<div class="mt"><a class="btn primary" href="#/">${t('home.upcoming')}</a></div></div>`}
       <div class="row between mt2"><h2 style="margin:0">${t('mine.private')}</h2><a class="btn sm" href="#/private">${t('home.private')}</a></div>
       <div class="stack mt">${(reqs || []).length ? reqs.map((r) => html`<div class="card"><div class="row between"><b>${fmtDate(fromIsoDay(r.date))} · ${r.time}</b><span class="pill ${r.status === 'accepted' ? 'ok' : r.status === 'rejected' ? 'bad' : 'warn'}">${t('preq.' + r.status)}</span></div>
         <div class="meta"><span>${icon('users', 15)}${r.people}</span><span>${icon('pin', 15)}${r.place}</span></div>

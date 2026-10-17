@@ -2,9 +2,9 @@
 import { db, auth } from '../store.js';
 import { go, loggedIn } from '../state.js';
 import { t } from '../i18n.js';
-import { html, setHtml, on, toast, sfx, isMuted, setMuted, confetti, formData } from '../util.js';
-import { standings, teamStandings, submitAnswer, rate, fastestLabel } from '../game.js';
-import { ring, updateRing, mediaBlock, optionsView, lbList, podium, shareResult } from '../ui-game.js';
+import { html, setHtml, on, toast, sfx, isMuted, setMuted, confetti, celebrate, countUp, formData, skeleton } from '../util.js';
+import { standings, teamStandings, submitAnswer, rate, fastestLabel, sendReaction } from '../game.js';
+import { ring, updateRing, mediaBlock, optionsView, lbList, podium, shareResult, reactBar, floatEmoji, clearFloat } from '../ui-game.js';
 import { BADGES } from '../api.js';
 
 export default function view({ el, params }) {
@@ -12,7 +12,7 @@ export default function view({ el, params }) {
   if (!auth.current) { go('/play'); return; }
   const uid = auth.current.uid;
   let s = null, me = null, players = [], teams = [], myAns = null, res = null, stars = 0, rated = false, timeUp = false;
-  let lastSig = '', lastIdx = -2, lastStatus = '', startLocal = 0, timer = null, unAns = () => {}, unRes = () => {}, soundedEnd = false;
+  let lastReact = 0, lastSig = '', lastIdx = -2, lastStatus = '', startLocal = 0, timer = null, unAns = () => {}, unRes = () => {}, soundedEnd = false;
 
   const myTeam = () => teams.find((x) => x.id === me?.teamId);
   const header = () => html`<div class="head"><div class="row wrap"><span class="pill gold">🍷 ${me?.nick || ''}</span>${myTeam() ? html`<span class="pill" style="border-color:${myTeam().color}">${myTeam().name}</span>` : ''}</div>
@@ -27,15 +27,16 @@ export default function view({ el, params }) {
   }
 
   function render(force = false) {
-    if (!s) { setHtml(el, html`<div class="game"><div class="empty">…</div></div>`); return; }
+    if (!s) { setHtml(el, html`<div class="game">${skeleton('rows')}</div>`); return; }
     const sg = sig(); if (!force && sg === lastSig) return; lastSig = sg;
     let body;
     if (s.status === 'lobby') body = lobby();
     else if (s.status === 'question') body = question();
     else if (s.status === 'reveal') body = reveal();
     else body = ended();
-    setHtml(el, html`<div class="game">${header()}${body}</div>`);
-    if (s.status === 'ended' && lastStatus !== 'ended') { if (res?.rank <= 3 || (rankOf() <= 3)) { confetti(120); sfx.fanfare(); } else sfx.good(); }
+    setHtml(el, html`<div class="game">${header()}${body}${s.status !== 'question' ? reactBar() : ''}</div>`);
+    if (s.status === 'ended' && lastStatus !== 'ended') { if (res?.rank <= 3 || (rankOf() <= 3)) celebrate(); else sfx.good(); }
+    if (s.status === 'reveal' && lastStatus !== 'reveal' && me?.lastOk) { confetti(34); const pe = el.querySelector('.pts b'); if (pe) countUp(pe, me.lastPts || 0, 700); }
     lastStatus = s.status;
   }
   const rankOf = () => standings(players).findIndex((p) => p.id === uid) + 1;
@@ -60,7 +61,7 @@ export default function view({ el, params }) {
     const ok = me?.lastOk, pts = me?.lastPts || 0;
     const rank = standings(players), pos = rank.findIndex((p) => p.id === uid) + 1;
     const ts = teamStandings(players, teams);
-    return html`<div class="result ${ok ? 'good' : 'miss'}"><div style="font-size:2.4rem">${ok ? '🎉' : ok === false ? '😅' : '⏱️'}</div><h2>${ok ? t('game.right') : ok === false ? t('game.wrong') : t('game.noAnswer')}</h2>${ok ? html`<div class="pts">+${pts}</div>` : ''}${r.fastest ? html`<p class="small muted" style="margin:0">⚡ ${t('game.fastest', { nick: r.fastest.nick, t: fastestLabel(r.fastest.ms) })}</p>` : ''}</div>
+    return html`<div class="result ${ok ? 'good' : 'miss'}"><div style="font-size:2.4rem">${ok ? '🎉' : ok === false ? '😅' : '⏱️'}</div><h2>${ok ? t('game.right') : ok === false ? t('game.wrong') : t('game.noAnswer')}</h2>${ok ? html`<div class="pts">+<b>${pts}</b></div>` : ''}${r.fastest ? html`<p class="small muted" style="margin:0">⚡ ${t('game.fastest', { nick: r.fastest.nick, t: fastestLabel(r.fastest.ms) })}</p>` : ''}</div>
       <div class="card qbox mt"><h3>${c.prompt}</h3></div>
       ${optionsView(c, { correct: r.correct, counts: r.counts, interactive: false, picked: myAns ? myAns.choice : -1 })}
       ${r.explanation ? html`<div class="card mt"><b class="gold">💡</b> ${r.explanation}</div>` : ''}
@@ -129,11 +130,16 @@ export default function view({ el, params }) {
       try { await submitAnswer(sid, uid, s.cur.index, choice); } catch (ex) { console.error(ex); myAns = null; toast(t('err.generic'), 'err'); render(true); }
     }),
     on(el, 'click', '[data-act="mute"]', () => { setMuted(!isMuted()); sfx.unlock(); render(true); }),
+    on(el, 'click', '[data-react]', (e, b) => {
+      const now = Date.now(); if (now - lastReact < 1200 || !me) return; lastReact = now;
+      const emoji = b.dataset.react; floatEmoji(emoji); b.classList.add('sent'); setTimeout(() => b.classList.remove('sent'), 450);
+      sendReaction(sid, uid, emoji).catch((ex) => console.error(ex));
+    }),
     on(el, 'change', '[data-act="team"]', async (e, sel) => { await db.update(`sessions/${sid}/players/${uid}`, { teamId: sel.value }); }),
     on(el, 'click', '[data-star]', (e, b) => { stars = Number(b.dataset.star); render(true); }),
     on(el, 'submit', '#rateForm', async (e) => { e.preventDefault(); const f = formData(e.target); try { await rate(sid, uid, stars, f.comment); rated = true; render(true); } catch { toast(t('err.generic'), 'err'); } }),
     on(el, 'click', '[data-act="share"]', () => { const rank = standings(players), pos = rank.findIndex((p) => p.id === uid) + 1; shareResult({ title: s.title, nick: me?.nick || '', rank: pos, players: rank.length, score: me?.score || 0, correct: me?.correct || 0, total: s.total }); }),
   ];
   render();
-  return () => { clearInterval(timer); subs.forEach((f) => f()); offs.forEach((f) => f()); unAns(); typeof unRes === 'function' && unRes(); };
+  return () => { clearInterval(timer); clearFloat(); subs.forEach((f) => f()); offs.forEach((f) => f()); unAns(); typeof unRes === 'function' && unRes(); };
 }

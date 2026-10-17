@@ -3,7 +3,7 @@ import { db, auth } from '../store.js';
 import { S, go, loggedIn, myNick } from '../state.js';
 import { t } from '../i18n.js';
 import { CONFIG } from '../config.js';
-import { html, setHtml, on, formData } from '../util.js';
+import { html, setHtml, on, formData, skeleton } from '../util.js';
 import { findSessionByCode, joinSession, addTeam } from '../game.js';
 import { icon } from '../icons.js';
 
@@ -66,6 +66,6 @@ export default function view({ el, params, query }) {
       } catch (ex) { console.error(ex); err = ex.message === 'table' ? t('join.badTable') : ex.message === 'team' ? t('join.teamName') : t('err.generic'); busy = false; renderForm(); }
     }),
   ];
-  if (state === 'code') renderCode(); else { setHtml(el, html`<div class="empty">…</div>`); lookup(); }
+  if (state === 'code') renderCode(); else { setHtml(el, skeleton('rows')); lookup(); }
   return () => { offs.forEach((f) => f()); unTeams(); };
 }

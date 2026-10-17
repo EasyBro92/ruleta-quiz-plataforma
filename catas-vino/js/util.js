@@ -132,15 +132,24 @@ export const sfx = {
   good() { tone(659, 0, 0.12, 'triangle'); tone(880, 0.12, 0.12, 'triangle'); tone(1175, 0.24, 0.25, 'triangle'); },
   bad() { tone(220, 0, 0.25, 'sawtooth', 0.07); tone(165, 0.2, 0.3, 'sawtooth', 0.07); },
   fanfare() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, i * 0.14, 0.22, 'triangle', 0.14)); },
+  drum() { tone(130, 0, 0.2, 'sine', 0.24); tone(65, 0, 0.26, 'triangle', 0.2); },
+  pop() { tone(740, 0, 0.06, 'sine', 0.08); tone(988, 0.045, 0.08, 'sine', 0.06); },
+  join() { tone(659, 0, 0.08, 'sine', 0.07); tone(988, 0.08, 0.13, 'sine', 0.07); },
 };
+// el navegador solo deja sonar el audio tras un primer toque: lo preparamos con cualquier toque en la app
+if (typeof document !== 'undefined') {
+  const unlock = () => { sfx.unlock(); document.removeEventListener('pointerdown', unlock, true); document.removeEventListener('keydown', unlock, true); };
+  document.addEventListener('pointerdown', unlock, true); document.addEventListener('keydown', unlock, true);
+}
 
 // ---------- Confeti ----------
 export function confetti(n = 90) {
   const box = document.createElement('div'); box.className = 'confetti';
-  const colors = ['#d6af5c', '#f0cf84', '#b32a4d', '#f6efe4', '#4fb58a', '#5b82c9'];
+  const colors = ['#ba6c96', '#a24a79', '#f2c6dc', '#d6af5c', '#f0cf84', '#ffffff', '#4fb58a', '#5b82c9'];
   for (let i = 0; i < n; i++) {
     const p = document.createElement('i');
     p.style.left = Math.random() * 100 + '%';
+    if (i % 3 === 0) p.className = 'r';
     p.style.background = colors[i % colors.length];
     p.style.animationDuration = 2.2 + Math.random() * 2.2 + 's';
     p.style.animationDelay = Math.random() * 0.8 + 's';
@@ -149,6 +158,24 @@ export function confetti(n = 90) {
   }
   document.body.appendChild(box);
   setTimeout(() => box.remove(), 5500);
+}
+
+/** Final de la partida: redoble al aparecer cada escalón y, con el 1.º, fanfarria y confeti. */
+export function celebrate() {
+  [100, 500, 900].forEach((ms) => setTimeout(() => sfx.drum(), ms));
+  setTimeout(() => { confetti(130); sfx.fanfare(); }, 1500);
+  setTimeout(() => confetti(60), 3300);
+}
+
+// ---------- Marcadores de carga (esqueletos) ----------
+export function skeleton(kind = 'rows') {
+  const line = (w) => html`<div class="sk sk-line" style="width:${w}%"></div>`;
+  let body;
+  if (kind === 'cards') body = [0, 1].map(() => html`<div class="card sk-card"><div class="sk sk-date"></div><div class="grow">${line(70)}${line(45)}<div class="sk sk-bar"></div></div></div>`);
+  else if (kind === 'calendar') body = html`<div class="sk sk-cal"></div>`;
+  else if (kind === 'detail') body = html`<div class="card mt"><div class="sk sk-hero"></div>${line(65)}${line(40)}${line(85)}<div class="sk sk-bar"></div></div><div class="card mt"><div class="sk sk-map"></div></div>`;
+  else body = [0, 1, 2, 3].map(() => html`<div class="sk sk-row"></div>`);
+  return html`<div class="sk-wrap" aria-busy="true" aria-live="polite"><span class="sr-only">…</span>${body}</div>`;
 }
 
 // ---------- Contador animado ----------

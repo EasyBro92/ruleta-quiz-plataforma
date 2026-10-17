@@ -9,7 +9,7 @@ import { createSession } from '../../game.js';
 const MODES = ['off', 'free', 'assigned', 'table'];
 
 export default function view({ el, query }) {
-  let qs = [], catas = [], sessions = null, picked = [], title = '', cataId = query.cata || '', mode = 'off', tables = 4, text = '', busy = false;
+  let qs = [], catas = [], sessions = null, picked = [], title = '', cataId = query.cata || '', mode = 'off', tables = 4, text = '', busy = false, announce = true;
   const fillTitle = () => { const c = catas.find((x) => x.id === cataId); if (c && !title) title = c.title; };
 
   const render = () => {
@@ -28,6 +28,7 @@ export default function view({ el, query }) {
           <label class="field"><span>${t('game.teams')}</span><select name="mode">${MODES.map((k) => html`<option value="${k}" ${mode === k ? 'selected' : ''}>${t('a.g.mode.' + k)}</option>`)}</select></label>
           ${mode === 'table' ? html`<label class="field"><span>${t('a.g.tables')}</span><input type="number" name="tables" min="2" max="30" value="${tables}"></label>` : ''}
         </div>
+        <label class="check mb"><input type="checkbox" name="announce" ${announce ? 'checked' : ''}><span>${t('a.g.announce')}</span></label>
         <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start">
           <div><h3>${t('a.g.bank')}</h3><input id="gsearch" placeholder="${t('a.search')}" value="${text}" class="mb">
             <div style="max-height:340px;overflow:auto">${avail.length ? avail.map((q) => html`<div class="qrow"><div class="grow"><div class="small">${q.ref ? html`<span class="tag">${q.ref}</span>` : ''}${q.prompt}</div></div><button type="button" class="btn sm" data-add="${q.id}">＋</button></div>`) : html`<p class="muted small">${qs.length ? t('a.g.noMatch') : t('a.g.noQs')}</p>`}</div>
@@ -43,7 +44,7 @@ export default function view({ el, query }) {
         ${s.final ? html`<p class="small muted mt" style="margin-bottom:0">🏆 ${s.final.top[0]?.nick || '—'} · 👥 ${s.final.players}</p>` : ''}
         <div class="row wrap mt"><a class="btn sm primary" href="#/admin/run/${s.id}">${s.status === 'ended' ? t('a.g.results') : t('a.g.present')}</a>${s.status === 'ended' ? html`<button class="btn sm" data-rate="${s.id}">${t('a.g.ratings')}</button>` : ''}</div></div>`)}</div>` : html`<div class="card empty">${t('a.g.none')}</div>`}`);
   };
-  const keepFields = () => { const f = el.querySelector('#gForm'); if (f) { const d = formData(f); title = d.title ?? title; cataId = d.cataId ?? cataId; mode = d.mode ?? mode; tables = d.tables ?? tables; } };
+  const keepFields = () => { const f = el.querySelector('#gForm'); if (f) { const d = formData(f); title = d.title ?? title; cataId = d.cataId ?? cataId; mode = d.mode ?? mode; tables = d.tables ?? tables; announce = !!d.announce; } };
 
   const subs = [
     db.onList('questions', {}, (l) => { qs = l; render(); }),
@@ -64,7 +65,7 @@ export default function view({ el, query }) {
       try {
         const questions = picked.map((id) => qs.find((q) => q.id === id)).filter(Boolean);
         const tb = mode === 'table' ? Array.from({ length: tables || 4 }, (_, i) => tMain('a.g.table', { n: i + 1 })) : [];
-        const { sid } = await createSession({ title, cataId, questions, teamMode: mode, tables: tb, createdBy: S.user.uid });
+        const { sid } = await createSession({ title, cataId, questions, teamMode: mode, tables: tb, createdBy: S.user.uid, announce });
         go('/admin/run/' + sid);
       } catch (ex) { console.error(ex); toast(t('a.g.createErr'), 'err'); busy = false; render(); }
     }),

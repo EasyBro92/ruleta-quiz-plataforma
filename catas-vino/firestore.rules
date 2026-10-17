@@ -127,6 +127,7 @@ service cloud.firestore {
     // ---------- partidas en directo ----------
     match /sessions/{sid} {
       allow read: if signedIn();               // invitados incluidos (sesión anónima)
+      allow list: if resource.data.announce == true;   // portada: aviso «Ara en directe» (la consulta debe filtrar announce == true)
       allow write: if isStaff();               // el presentador es el árbitro
 
       // preguntas con la respuesta correcta: solo el equipo
@@ -169,6 +170,20 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/sessions/$(sid)).data.cur.index == request.resource.data.index
           && exists(/databases/$(database)/documents/sessions/$(sid)/players/$(request.auth.uid));
         allow update, delete: if isStaff();    // el presentador marca acierto y puntos
+      }
+
+      // reacciones con emojis: un documento por persona que se sobrescribe (como mucho una por segundo)
+      match /reactions/{uid} {
+        allow read: if signedIn();
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['uid', 'emoji', 'n', 'at'])
+          && request.resource.data.uid == uid
+          && request.resource.data.emoji in ['🍷', '👏', '🔥', '😂', '🤩']
+          && request.resource.data.n is int
+          && request.resource.data.at == request.time
+          && (resource == null || request.time > resource.data.at + duration.value(1, 's'))
+          && exists(/databases/$(database)/documents/sessions/$(sid)/players/$(uid));
+        allow delete: if isStaff();
       }
 
       match /ratings/{uid} {
