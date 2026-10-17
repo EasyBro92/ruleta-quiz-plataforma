@@ -79,7 +79,7 @@ export async function promoteWaitlist(cataId) {
 
 // ---------- catas privadas ----------
 export async function createPrivateRequest(user, f) {
-  return db.add('privateRequests', { uid: user.uid, name: f.name, email: user.email || '', phone: f.phone, date: f.date, time: f.time, people: f.people, place: f.place, notes: f.notes || '', status: 'pending', createdAt: db.ts(), updatedAt: db.ts() });
+  return db.add('privateRequests', { uid: user.uid, name: f.name, email: f.email || user.email || '', phone: f.phone, date: f.date, time: f.time, people: f.people, place: f.place, notes: f.notes || '', status: 'pending', createdAt: db.ts(), updatedAt: db.ts() });
 }
 export async function answerPrivateRequest(req, status, { counterDate = '', counterNote = '' } = {}) {
   await db.update(`privateRequests/${req.id}`, { status, counterDate, counterNote, updatedAt: db.ts() });

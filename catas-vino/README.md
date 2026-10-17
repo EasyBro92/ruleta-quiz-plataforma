@@ -2,8 +2,8 @@
 
 App web instalable (PWA) para Catarsi (https://www.salutcatarsi.cat/), el negocio de catas itinerantes de Jordi Roura:
 
-- **Portada**: tu logo, tu foto y una breve presentación; debajo, un calendario mensual con las catas marcadas (al pulsar un día se ve esa cata y se puede reservar), las próximas catas en **tarjetas deslizables** (se arrastran con el dedo; en el ordenador, con las flechas), las novedades y el aviso para pedir una cata privada.
-- **Clientes**: ven las próximas catas, reservan plazas (con lista de espera), piden una cata privada, juegan en directo, suben en el ranking y canjean premios. En 6 idiomas; **el catalán es el idioma principal** (CA, ES, EN, FR, DE, IT).
+- **Portada**: tu logo, tu foto, una breve presentación y la **tarjeta del próximo tast** con botón para reservar; debajo, un calendario mensual con las catas marcadas (al pulsar un día se ve esa cata y se puede reservar), las próximas catas en **tarjetas deslizables** (se arrastran con el dedo; en el ordenador, con las flechas), las novedades y el aviso para pedir una cata privada.
+- **Clientes**: ven las próximas catas, reservan plazas (con lista de espera), piden una cata privada (**sin necesidad de crear cuenta**), juegan en directo, suben en el ranking y canjean premios. En 6 idiomas; **el catalán es el idioma principal** (CA, ES, EN, FR, DE, IT).
 - **Tú y tu equipo**: panel para crear catas, ver y gestionar reservas, responder a catas privadas, mantener el catálogo de vinos y las preguntas, **presentar la partida** y entregar premios.
 - Funciona **sin instalar nada**: es HTML + JavaScript. Se aloja en **GitHub Pages** y los datos viven en **Firebase**.
 
@@ -42,7 +42,7 @@ Para probar una **partida en directo** en demo, abre varias pestañas del mismo 
 ### 2.2 Autenticación
 **Build → Authentication → Sign-in method**, activa:
 - **Correo electrónico/contraseña**
-- **Anónimo** ← *imprescindible*: es lo que permite entrar a una partida como invitado con código/QR.
+- **Anónimo** ← *imprescindible*: es lo que permite entrar a una partida como invitado con código/QR y pedir una cata privada sin crear cuenta.
 - **Google** (elige un correo de soporte).
 - **Apple** (opcional; exige cuenta de Apple Developer. Si no lo vas a usar, pon `apple: false` en `loginMethods` de `config.js`).
 
@@ -80,7 +80,8 @@ Las reglas impiden que nadie se haga admin desde la app; el primero se crea a ma
 4. **Partidas**: elige preguntas y orden, modo de equipos (sin equipos / libres / asignados / por mesas) → *Crear partida*. Aparece el **código y el QR**.
 5. **Presentar**: tú lanzas cada pregunta; se cierra sola cuando todos responden o se acaba el tiempo (o la cierras tú). Pantalla grande en `#/screen/CODIGO` (ábrela en el portátil conectado a un proyector/TV).
 6. **Premios**: descuentos, copa/cata gratis, sorteos; canjes con código que validas tú. **Novedades** para anunciar eventos.
-7. **Catas privadas**: marca en el calendario las fechas libres; las solicitudes llegan al panel y las aceptas, rechazas o contraproponen fecha.
+7. **Catas privadas**: marca en el calendario las fechas libres; las solicitudes (con o sin cuenta) llegan al panel y las aceptas, rechazas o contraproponen fecha. Si rellenas tu número en `js/config.js → brand.whatsapp` (con prefijo, sin `+`, por ejemplo `34612345678`), aparece también un botón de WhatsApp con el mensaje ya escrito.
+8. **Foto de cada cata**: al crear o editar una cata puedes subir una foto (se reduce sola). Sale en la tarjeta del carrusel y arriba en la ficha. Sin foto, la tarjeta se ve como antes.
 
 Puntos de una pregunta: `puntos base + hasta un 50 % extra por rapidez` (valores en `js/config.js → game`).
 
@@ -90,7 +91,7 @@ Puntos de una pregunta: `puntos base + hasta un 50 % extra por rapidez` (valores
 
 - **Logo y foto (portada)**: el logo «catarsi» ya está en la app (`img/logo-catarsi.png`; barra superior y portada). Al abrir la app sale unos instantes el logo completo (`img/logo-apertura.png`: copa rosa, «catarsi» y «tasts a mida») y se desvanece. La foto se carga desde tu web (`js/config.js → brand.photo`); para que la app no dependa de la web, descárgala a `img/` y pon `photo: 'img/foto.jpg'`. En `js/config.js → brand` también puedes poner `owner` (tu nombre bajo la foto) e `intro` (tu texto de presentación).
 - **Nombre, correo, Instagram, WhatsApp**: `js/config.js → brand` (`email`, `instagram`, `whatsapp`; los que dejes vacíos no se muestran). El lema está en las traducciones (`brand.tagline`).
-- **Colores**: variables CSS al principio de `css/app.css` (fondo claro con granate y dorado como acentos).
+- **Colores**: variables CSS al principio de `css/app.css` (fondo claro; el acento es el rosa del logo de Catarsi y el dorado secundario).
 - **Tipografías**: Newsreader (títulos) y Hanken Grotesk (texto), cargadas desde Google Fonts en `index.html`; sin internet se usan fuentes del sistema.
 - **Iconos**: carpeta `icons/` (192, 512, maskable, apple-touch, favicon).
 - **Plazo de cancelación (48 h), edad mínima, puntos por partida**: `js/config.js`.
@@ -143,3 +144,7 @@ El **presentador hace de árbitro**: su dispositivo abre cada pregunta, revela l
 3. **Pago online** (Stripe) para señal de reserva.
 4. **Cloud Functions** para reservas, lista de espera y puntos.
 5. Panel de gestión en más idiomas.
+
+## Vista previa al compartir el enlace
+
+Las etiquetas de `index.html` (`og:title`, `og:description`, `og:image`…) hacen que al pasar el enlace por WhatsApp, Instagram o correo salga el logo (`img/og-catarsi.png`, 1200×630) con un título y una frase. Llevan escrita la dirección de GitHub Pages (`https://easybro92.github.io/ruleta-quiz-plataforma/catas-vino/`): si algún día usas otro dominio, cámbiala en `index.html`.

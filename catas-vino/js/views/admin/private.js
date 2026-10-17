@@ -27,7 +27,7 @@ export default function view({ el }) {
     const wd = Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(lang(), { weekday: 'narrow' }).format(new Date(2024, 0, 1 + i)));
     return html`<div class="row between mb"><button class="btn sm" data-month="-1">‹</button><b style="text-transform:capitalize">${new Intl.DateTimeFormat(lang(), { month: 'long', year: 'numeric' }).format(month)}</b><button class="btn sm" data-month="1">›</button></div>
       <div class="cal">${wd.map((x) => html`<div class="h">${x}</div>`)}${cells}</div>
-      <div class="row wrap small muted mt"><span class="pill ok" style="background:rgba(179,42,77,.5)">${t('a.priv.legendFree')}</span><span class="pill gold">${t('a.priv.legendBusy')}</span></div>`;
+      <div class="row wrap small muted mt"><span class="pill ok" style="background:rgba(162,74,121,.5)">${t('a.priv.legendFree')}</span><span class="pill gold">${t('a.priv.legendBusy')}</span></div>`;
   };
   const card = (r) => html`<div class="card"><div class="row between top"><div><h3 style="margin:0">${r.name}</h3><div class="small muted">${r.phone} · ${r.email || ''}</div></div><span class="pill ${pillFor(r.status)}">${statusLabel(r.status)}</span></div>
     <div class="meta mt"><span>📅 ${fmtDate(fromIsoDay(r.date), { weekday: 'long', day: 'numeric', month: 'long' })} · ${r.time}</span><span>👥 ${t('a.priv.people', { n: r.people })}</span><span>📍 ${r.place}</span></div>

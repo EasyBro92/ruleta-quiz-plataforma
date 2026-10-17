@@ -10,7 +10,8 @@ import { contactBlock } from '../contact.js';
 
 export const cataCard = (c) => {
   const left = seatsLeft(c), pct = c.capacity ? Math.min(100, Math.round(((c.seatsTaken || 0) / c.capacity) * 100)) : 0;
-  return html`<a class="card cata" href="#/cata/${c.id}">
+  return html`<a class="card cata ${c.image ? 'has-photo' : ''}" href="#/cata/${c.id}">
+    ${c.image ? html`<div class="cata-photo"><img src="${c.image}" alt="" loading="lazy"></div>` : ''}
     <div class="date"><b>${dayNum(c.startsAt)}</b><span>${monthShort(c.startsAt)}</span></div>
     <div class="grow">
       <h3>${c.title}</h3>
@@ -70,7 +71,7 @@ export function installBanner() {
 const brokenImg = new Set();
 
 /** Portada: el logo y tu foto, y debajo la presentación. */
-function cover() {
+function cover(next) {
   const b = CONFIG.brand, logo = b.logo && !brokenImg.has('logo'), photo = b.photo && !brokenImg.has('photo');
   return html`<section class="cover">
     <div class="cover-logo">
@@ -80,7 +81,13 @@ function cover() {
     <div class="arch"><div class="frame">${photo ? html`<img src="${b.photo}" alt="${b.owner || b.name}" data-brand="photo">` : html`<div class="ph">${portraitPlaceholder()}${b.photo ? '' : html`<span>${t('home.photoPh')}</span>`}</div>`}</div></div>
     ${b.owner ? html`<p class="owner">${b.owner}</p>` : ''}
     <p class="intro">${b.intro || t('home.intro')}</p>
-    <div class="cover-cta"><button class="btn primary" data-act="to-calendar">${t('home.book')} ${icon('down', 18)}</button></div>
+    ${next ? html`<a class="next-card" href="#/cata/${next.id}">
+      <div class="date"><b>${dayNum(next.startsAt)}</b><span>${monthShort(next.startsAt)}</span></div>
+      <div class="grow"><span class="next-label">${t('home.next')}</span><h3>${next.title}</h3>
+        <div class="meta"><span>${icon('clock', 15)}${fmtTime(next.startsAt)}</span><span>${icon('pin', 15)}${next.address || '—'}</span></div>
+        <div class="small muted next-seats">${isFull(next) ? t('cata.full') + ' · ' + t('cata.waitlist') : t('cata.left', { n: seatsLeft(next) })}</div></div>
+      <span class="btn primary sm">${t('home.nextSee')}</span></a>` : ''}
+    <div class="cover-cta"><button class="btn ${next ? '' : 'primary'}" data-act="to-calendar">${next ? t('home.seeAll') : t('home.book')} ${icon('down', 18)}</button></div>
   </section>`;
 }
 
@@ -134,7 +141,7 @@ export default function view({ el }) {
     const keepLeft = oldTrack && carKey === selDay + '|' + (month ? month.y + '-' + month.m : '') ? oldTrack.scrollLeft : 0;
     carKey = selDay + '|' + (month ? month.y + '-' + month.m : '');
     setHtml(el, html`
-      ${cover()}
+      ${cover(catas && list[0] && !isPast(list[0]) ? list[0] : null)}
       <section class="sect" id="calendario">
         <h2>${t('home.upcoming')}</h2>
         ${month ? calendar(list) : html`<div class="empty">…</div>`}

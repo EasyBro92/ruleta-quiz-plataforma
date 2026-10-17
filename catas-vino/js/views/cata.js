@@ -27,7 +27,8 @@ export default function view({ el, params }) {
     const p = S.profile || {};
     setHtml(el, html`
       <a href="#/" class="muted small">← ${t('common.back')}</a>
-      <div class="card mt">
+      <div class="card mt ${c.image ? 'has-hero' : ''}">
+        ${c.image ? html`<img class="cata-hero" src="${c.image}" alt="">` : ''}
         <h1>${c.title}</h1>
         <div class="meta mb"><span>${icon('calendar', 15)}${fmtDate(c.startsAt)}</span><span>${icon('clock', 15)}${fmtTime(c.startsAt)} · ${t('cata.duration', { n: c.durationMin || 120 })}</span><span>${icon('euro', 15)}${money(c.price)} <span class="muted">(${t('cata.payhere')})</span></span></div>
         ${c.showTheme && c.theme ? html`<p><b class="gold">${t('cata.theme')}:</b> ${c.theme}</p>` : html`<p class="muted"><i>${t('cata.themeHidden')}</i></p>`}
@@ -37,9 +38,22 @@ export default function view({ el, params }) {
         <div class="row between small mt" style="margin-top:6px"><span class="muted">${full ? t('cata.full') : t('cata.left', { n: left })}</span>${c.waitCount ? html`<span class="pill">${t('cata.inwait', { n: c.waitCount })}</span>` : ''}</div>
       </div>
       <div class="card mt"><h3 class="row" style="gap:8px">${icon('pin', 20)}<span>${c.address || ''}</span></h3>${mapBlock(c)}</div>
-      ${past ? html`<div class="card mt empty">${t('cata.past')}</div>` : active ? bookedCard() : formCard(p, full)}
+      <div id="bookTarget">${past ? html`<div class="card mt empty">${t('cata.past')}</div>` : active ? bookedCard() : formCard(p, full)}</div>
+      ${!past && !active ? html`<div class="sticky-book" id="stickyBook">
+        <div class="grow"><b>${money(c.price)}</b><span class="muted small">${full ? t('cata.full') : t('cata.left', { n: left })}</span></div>
+        <button type="button" class="btn primary" data-act="to-form">${full ? t('book.joinWaitBtn') : t('book.btn')}</button></div>` : ''}
     `);
+    watchForm();
   };
+  // la barra fija se esconde cuando ya se ve el formulario de reserva
+  let io = null;
+  function watchForm() {
+    io && io.disconnect(); io = null;
+    const bar = el.querySelector('#stickyBook'), tgt = el.querySelector('#bookTarget');
+    if (!bar || !tgt || !('IntersectionObserver' in window)) return;
+    io = new IntersectionObserver(([en]) => bar.classList.toggle('hide', en.isIntersecting && en.intersectionRatio > 0.25), { threshold: [0, 0.25, 0.5] });
+    io.observe(tgt);
+  }
   const bookedCard = () => {
     const ok = mine.status === 'confirmed';
     const cancellable = canCancel(c);
@@ -71,6 +85,10 @@ export default function view({ el, params }) {
   let u2 = () => {};
   if (loggedIn()) u2 = db.onDoc(`catas/${id}/bookings/${S.user.uid}`, (b) => { mine = b; render(); });
   const off = [
+    on(el, 'click', '[data-act="to-form"]', () => {
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      el.querySelector('#bookTarget')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    }),
     on(el, 'click', '[data-act="plus"]', () => { if (seats < 8) { seats++; keepForm(); } }),
     on(el, 'click', '[data-act="minus"]', () => { if (seats > 1) { seats--; keepForm(); } }),
     on(el, 'click', '[data-act="cancel"]', async () => {
@@ -96,5 +114,5 @@ export default function view({ el, params }) {
     const nf = el.querySelector('#bookForm'); if (nf && keep) for (const k of ['name', 'phone', 'allergies']) if (nf.elements[k]) nf.elements[k].value = keep[k] ?? '';
   }
   render();
-  return () => { u1(); u2(); off.forEach((f) => f()); };
+  return () => { u1(); u2(); io && io.disconnect(); off.forEach((f) => f()); };
 }

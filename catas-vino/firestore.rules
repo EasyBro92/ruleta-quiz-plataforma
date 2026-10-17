@@ -106,7 +106,7 @@ service cloud.firestore {
 
     // ---------- catas privadas ----------
     match /privateRequests/{rid} {
-      allow create: if isRegistered() && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending';
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending';       // también sin cuenta (sesión anónima)
       allow get, list: if isStaff() || (signedIn() && resource.data.uid == request.auth.uid);
       allow update: if isStaff();
     }

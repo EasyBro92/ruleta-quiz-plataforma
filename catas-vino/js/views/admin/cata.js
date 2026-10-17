@@ -3,13 +3,13 @@ import { db } from '../../store.js';
 import { go } from '../../state.js';
 import { CONFIG } from '../../config.js';
 import { t } from '../../i18n.js';
-import { html, setHtml, on, formData, toast, confirmBox, modal, toLocalInput, fromLocalInput, geocode, downloadCsv, rid } from '../../util.js';
+import { html, setHtml, on, formData, toast, confirmBox, modal, toLocalInput, fromLocalInput, geocode, downloadCsv, rid, resizeImage } from '../../util.js';
 import { adminTabs, statusLabel, pillFor } from './ui.js';
 import { cancelBooking, promoteWaitlist, sendNotice } from '../../api.js';
 
 export default function view({ el, params }) {
   const id = params.id, isNew = id === 'new';
-  let c = isNew ? { title: '', startsAt: Date.now() + 7 * 86400000, durationMin: 120, address: '', price: 25, capacity: 12, cancelHours: CONFIG.cancelHours, showTheme: true, theme: '', wines: '', notes: '', published: true, seatsTaken: 0, waitCount: 0, lat: null, lon: null } : null;
+  let c = isNew ? { title: '', startsAt: Date.now() + 7 * 86400000, durationMin: 120, address: '', price: 25, capacity: 12, cancelHours: CONFIG.cancelHours, showTheme: true, theme: '', wines: '', notes: '', published: true, seatsTaken: 0, waitCount: 0, lat: null, lon: null, image: '' } : null;
   let books = [], contacts = {}, busy = false, geoMsg = '';
 
   const render = () => {
@@ -23,6 +23,10 @@ export default function view({ el, params }) {
       <h1 class="mt">${isNew ? t('a.cata.newTitle') : c.title}</h1>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));align-items:start">
       <form class="card" id="cForm">
+        <div class="field"><span>${t('a.cata.f.photo')}</span>
+          ${c.image ? html`<img class="img-q mb" src="${c.image}" alt="">` : ''}
+          <div class="row wrap"><label class="btn sm" for="cImg">${c.image ? t('a.cata.photoChange') : t('a.cata.photoPick')}</label><input type="file" id="cImg" accept="image/*" hidden>${c.image ? html`<button type="button" class="btn sm danger" data-act="rmimg">${t('a.cata.photoRm')}</button>` : ''}</div>
+          <p class="hint">${t('a.cata.photoHint')}</p></div>
         <label class="field"><span>${t('a.cata.f.title')}</span><input name="title" required value="${c.title}"></label>
         <div class="grid c2"><label class="field"><span>${t('a.cata.f.when')}</span><input type="datetime-local" name="startsAt" required value="${toLocalInput(c.startsAt)}"></label>
           <label class="field"><span>${t('a.cata.f.duration')}</span><input type="number" name="durationMin" min="30" step="15" value="${c.durationMin || 120}"></label></div>
@@ -50,7 +54,7 @@ export default function view({ el, params }) {
 
   const subs = [];
   if (!isNew) {
-    subs.push(db.onDoc(`catas/${id}`, (d) => { if (!d) { toast(t('a.cata.gone'), 'err'); go('/admin'); return; } const keep = c && el.querySelector('#cForm') ? formData(el.querySelector('#cForm')) : null; c = { ...d, lat: c?.latEdited ? c.lat : d.lat, lon: c?.latEdited ? c.lon : d.lon, latEdited: !!c?.latEdited }; if (!keep) render(); else renderKeep(keep); }));
+    subs.push(db.onDoc(`catas/${id}`, (d) => { if (!d) { toast(t('a.cata.gone'), 'err'); go('/admin'); return; } const keep = c && el.querySelector('#cForm') ? formData(el.querySelector('#cForm')) : null; c = { ...d, lat: c?.latEdited ? c.lat : d.lat, lon: c?.latEdited ? c.lon : d.lon, latEdited: !!c?.latEdited, image: c?.imgEdited ? c.image : (d.image || ''), imgEdited: !!c?.imgEdited }; if (!keep) render(); else renderKeep(keep); }));
     subs.push(db.onList(`catas/${id}/bookings`, {}, (l) => { books = l; render2(); }));
     subs.push(db.onList(`catas/${id}/contacts`, {}, (l) => { contacts = Object.fromEntries(l.map((x) => [x.id, x])); render2(); }));
   }
@@ -59,7 +63,7 @@ export default function view({ el, params }) {
   function renderKeep(keep) { render(); const f = el.querySelector('#cForm'); if (!f) return; for (const [k, v] of Object.entries(keep)) { const inp = f.elements[k]; if (!inp) continue; if (inp.type === 'checkbox') inp.checked = !!v; else if (inp.type !== 'datetime-local' || v) inp.value = v ?? ''; } }
   const read = () => {
     const f = formData(el.querySelector('#cForm'));
-    return { title: f.title, startsAt: fromLocalInput(f.startsAt), durationMin: f.durationMin || 120, address: f.address, lat: c.lat ?? null, lon: c.lon ?? null, price: f.price ?? 0, capacity: f.capacity, cancelHours: f.cancelHours ?? CONFIG.cancelHours, showTheme: f.showTheme, theme: f.theme, wines: f.wines, notes: f.notes, published: f.published };
+    return { title: f.title, startsAt: fromLocalInput(f.startsAt), durationMin: f.durationMin || 120, address: f.address, lat: c.lat ?? null, lon: c.lon ?? null, price: f.price ?? 0, capacity: f.capacity, cancelHours: f.cancelHours ?? CONFIG.cancelHours, showTheme: f.showTheme, theme: f.theme, wines: f.wines, notes: f.notes, published: f.published, image: c.image || '' };
   };
 
   const offs = [
@@ -68,11 +72,18 @@ export default function view({ el, params }) {
       try {
         const d = read();
         if (isNew) { const nid = await db.add('catas', { ...d, seatsTaken: 0, waitCount: 0, createdAt: db.ts() }); toast(t('a.cata.created')); go('/admin/cata/' + nid); return; }
-        await db.update(`catas/${id}`, d); toast(t('common.saved'));
+        await db.update(`catas/${id}`, d); c.imgEdited = false; toast(t('common.saved'));
         if (d.capacity > (c.capacity || 0)) { const n = await promoteWaitlist(id); if (n) toast(t('a.cata.promotedN', { n })); }
       } catch (ex) { console.error(ex); toast(t('a.saveErr'), 'err'); }
       busy = false; render2();
     }),
+    on(el, 'change', '#cImg', async (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      const keep = formData(el.querySelector('#cForm'));
+      try { c.image = await resizeImage(file, 1000, 0.72); c.imgEdited = true; } catch { toast(t('a.cata.photoErr'), 'err'); }
+      renderKeep(keep);
+    }),
+    on(el, 'click', '[data-act="rmimg"]', () => { const keep = formData(el.querySelector('#cForm')); c.image = ''; c.imgEdited = true; renderKeep(keep); }),
     on(el, 'click', '[data-act="geo"]', async () => {
       const f = formData(el.querySelector('#cForm')); if (!f.address) return;
       geoMsg = t('a.cata.geoSearching'); const keep = f; render(); renderKeep(keep);
