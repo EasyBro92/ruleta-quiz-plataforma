@@ -67,6 +67,10 @@ export function seedDemo() {
   R('r2', 'Copa de benvinguda gratis', 'Una copa d\'escumós en arribar al teu proper tast.', 'free', 500);
   R('r3', 'Sorteig: tast per a dues persones', 'Cada participació suma una butlleta al sorteig.', 'raffle', 200);
 
+  // opiniones de ejemplo (solo en modo demo; en la app real las eliges tú desde Gestió → Confiança)
+  D['reviews/rv1'] = { stars: 5, comment: 'Opinió d\'exemple: així es veuran les opinions destacades a la portada.', nick: 'Client d\'exemple', title: '', sample: true, featuredAt: now - 2 * DAY };
+  D['reviews/rv2'] = { stars: 5, comment: 'Una altra opinió d\'exemple. Pots triar-ne dels tasts o afegir-ne de pròpies.', nick: 'Client d\'exemple', title: '', sample: true, featuredAt: now - 3 * DAY };
+
   D['announcements/a1'] = { title: 'Nous tasts de tardor', body: 'Ja pots reservar els tasts de les properes setmanes. Places limitades!', createdAt: now - DAY };
   return D;
 }

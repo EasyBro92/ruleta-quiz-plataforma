@@ -51,7 +51,7 @@ En **Authentication → Settings → Authorized domains** añade tu dominio de G
 ### 2.3 Base de datos y reglas
 1. **Build → Firestore Database → Crear base de datos** → modo *producción* → región europea (p. ej. `eur3` o `europe-west`).
 2. Pestaña **Reglas** → borra lo que haya, pega el contenido de **`firestore.rules`** → **Publicar**.
-3. Si ya tenías las reglas publicadas de una versión anterior, **vuelve a pegar y publicar `firestore.rules`**: las últimas versiones añaden las reacciones con emojis y el aviso «Ara en directe» de la portada.
+3. Si ya tenías las reglas publicadas de una versión anterior, **vuelve a pegar y publicar `firestore.rules`**: las últimas versiones añaden las reacciones con emojis, el aviso «Ara en directe» de la portada, la tarjeta de sellos y las opiniones/galería de la portada.
 4. Antes de abrirla al público, prueba las reglas con el *Simulador de reglas* de esa misma pestaña (no he podido probarlas contra un Firebase real; ver “Limitaciones”).
 
 ### 2.4 Crear al primer administrador

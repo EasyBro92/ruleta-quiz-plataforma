@@ -28,6 +28,7 @@ const ROUTES = [
   ['/admin/games', 'admin/games', { staff: true, wide: true, nav: 'admin' }],
   ['/admin/run/:sid', 'admin/run', { staff: true, wide: true, nav: 'admin' }],
   ['/admin/rewards', 'admin/rewards', { staff: true, wide: true, nav: 'admin' }],
+  ['/admin/trust', 'admin/trust', { staff: true, wide: true, nav: 'admin' }],
   ['/admin/team', 'admin/team', { staff: true, wide: true, nav: 'admin', adminOnly: true }],
 ];
 const compile = (p) => new RegExp('^' + p.replace(/:[a-z]+/g, '([^/]+)') + '/?$');

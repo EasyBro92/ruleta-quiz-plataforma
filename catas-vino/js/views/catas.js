@@ -3,7 +3,7 @@ import { db } from '../store.js';
 import { S, bus } from '../state.js';
 import { t } from '../i18n.js';
 import { CONFIG } from '../config.js';
-import { html, setHtml, fmtDate, fmtTime, dayNum, monthShort, money, isoDay, fromIsoDay, skeleton } from '../util.js';
+import { html, setHtml, fmtDate, fmtTime, dayNum, monthShort, money, isoDay, fromIsoDay, skeleton, modal } from '../util.js';
 import { countdown } from '../countdown.js';
 import { seatsLeft, isFull, isPast } from '../api.js';
 import { icon, portraitPlaceholder } from '../icons.js';
@@ -97,7 +97,7 @@ function cover(next) {
 const keyOf = (ms) => isoDay(ms);
 
 export default function view({ el }) {
-  let catas = null, news = null, month = null, selDay = '', carKey = '', live = null;
+  let catas = null, news = null, month = null, selDay = '', carKey = '', live = null, trust = null, reviews = [], gallery = [];
   const lang = () => S.lang || 'ca';
 
   const upcoming = () => (catas || []).filter((c) => !isPast(c) || c.startsAt > Date.now() - 3600000).sort((a, b) => a.startsAt - b.startsAt);
@@ -138,6 +138,19 @@ export default function view({ el }) {
   const liveBanner = () => (live ? html`<a class="live-banner" href="#/join/${live.code}"><span class="live-dot" aria-hidden="true"></span><span class="grow"><b>${t('home.live')}</b><span class="live-title">${live.title}</span></span><span class="btn sm">${t('home.liveJoin')}</span></a>` : '');
   const pickLive = (l) => l.filter((s) => s.announce === true && s.status !== 'ended' && Date.now() - (s.createdAt || 0) < 12 * 3600000).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0] || null;
 
+  // sección de confianza: valoración media, opiniones destacadas y fotos (se repinta sola, sin rehacer la portada)
+  const trustBlock = () => {
+    const showAvg = trust && trust.count >= CONFIG.trust.minRatings && trust.avg > 0;
+    if (!showAvg && !reviews.length && !gallery.length) return '';
+    const avg = showAvg ? trust.avg.toLocaleString(lang(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '';
+    return html`<section class="sect trust"><h2>${t('home.trustTitle')}</h2>
+      ${showAvg ? html`<div class="rate-sum"><b class="rate-num">${avg}</b><span><span class="stars-rate" style="--p:${Math.round((trust.avg / 5) * 100)}%" role="img" aria-label="${avg} / 5">★★★★★</span><span class="muted small rate-n">${t('home.trustN', { n: trust.count })}</span></span></div>` : ''}
+      ${reviews.length ? html`<div class="rev-strip">${reviews.map((r) => html`<figure class="rev"><div class="rev-stars" role="img" aria-label="${r.stars} / 5">${'★'.repeat(r.stars)}<span>${'★'.repeat(5 - r.stars)}</span></div><blockquote>${r.comment}</blockquote><figcaption>${r.nick || ''}${r.title ? html` <span class="muted">· ${r.title}</span>` : ''}</figcaption></figure>`)}</div>` : ''}
+      ${gallery.length ? html`<div class="gal">${gallery.map((g) => html`<button type="button" class="gal-i" data-gal="${g.id}" aria-label="${g.caption || '📷'}"><img src="${g.image}" alt="${g.caption || ''}" loading="lazy" decoding="async"></button>`)}</div>` : ''}
+    </section>`;
+  };
+  const paintTrust = () => { const slot = el.querySelector('#trustSlot'); if (slot) setHtml(slot, trustBlock()); };
+
   const render = () => {
     const list = upcoming();
     if (catas && !month) { const f = list[0] ? new Date(list[0].startsAt) : new Date(); month = { y: f.getFullYear(), m: f.getMonth() }; }
@@ -156,6 +169,7 @@ export default function view({ el }) {
         ${selDay ? html`<div class="list-head"><h3>${t('cal.day', { d: fmtDate(selDate, { weekday: 'long', day: 'numeric', month: 'long' }) })}</h3><span class="filter">${t('cal.all')}<button type="button" data-act="clear-day" aria-label="${t('cal.all')}">×</button></span></div>` : html`<div class="mt2"></div>`}
         ${catas === null ? skeleton('cards') : shown.length ? carousel(shown) : html`<div class="card empty">${t('home.none')}</div>`}
       </section>
+      <div id="trustSlot">${trustBlock()}</div>
       ${news ? html`<section class="sect"><div class="news">${icon('megaphone', 22)}<div><h3>${news.title}</h3><p class="muted small" style="margin:0">${news.body}</p></div></div></section>` : ''}
       <section class="sect"><div class="private-cta"><h3>${t('home.privateTitle')}</h3><p>${t('home.privateText')}</p><div class="cta-row"><a class="btn primary" href="#/private">${t('home.private')}</a></div><div class="cta-contact">${contactBlock()}</div></div></section>
       <div class="sect">${installBanner()}</div>
@@ -172,6 +186,9 @@ export default function view({ el }) {
 
   const u1 = db.onList('catas', { where: [['published', '==', true]] }, (r) => { catas = r; render(); });
   const u4 = db.onList('sessions', { where: [['announce', '==', true]] }, (l) => { const n = pickLive(l); if (n?.id === live?.id && n?.title === live?.title) return; live = n; const slot = el.querySelector('#liveSlot'); if (slot) setHtml(slot, liveBanner()); });
+  const u5 = db.onDoc('settings/trust', (d) => { trust = d; paintTrust(); });
+  const u6 = db.onList('reviews', { orderBy: [['featuredAt', 'desc']], limit: 6 }, (l) => { reviews = l; paintTrust(); });
+  const u7 = db.onList('gallery', { orderBy: [['createdAt', 'desc']], limit: 8 }, (l) => { gallery = l; paintTrust(); });
   const u2 = db.onList('announcements', { orderBy: [['createdAt', 'desc']], limit: 1 }, (r) => { news = r[0] || null; render(); });
   const u3 = bus.on('install', render);
   const click = async (e) => {
@@ -184,6 +201,8 @@ export default function view({ el }) {
       carScrollTo(track, dot ? Number(dot.dataset.carDot) : carIndex(track) + Number(go.dataset.carGo));
       return;
     }
+    const gi = tgt.closest('[data-gal]');
+    if (gi) { const g = gallery.find((x) => x.id === gi.dataset.gal); if (g) modal(html`<img class="lightbox" src="${g.image}" alt="${g.caption || ''}">${g.caption ? html`<p class="center muted mt">${g.caption}</p>` : ''}<button class="btn block mt" data-close>${t('common.back')}</button>`); return; }
     const mb = tgt.closest('[data-month]');
     if (mb && month) { const d = new Date(month.y, month.m + Number(mb.dataset.month), 1); month = { y: d.getFullYear(), m: d.getMonth() }; selDay = ''; render(); return; }
     const db_ = tgt.closest('[data-day]');
@@ -192,5 +211,5 @@ export default function view({ el }) {
   };
   el.addEventListener('click', click);
   render();
-  return () => { u1(); u2(); u3(); u4(); el.removeEventListener('click', click); };
+  return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); el.removeEventListener('click', click); };
 }

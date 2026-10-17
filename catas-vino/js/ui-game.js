@@ -1,5 +1,5 @@
 /* Piezas visuales compartidas por el juego (participante, pantalla grande y presentador) */
-import { html } from './util.js';
+import { html, modal, fmtDate } from './util.js';
 import { t } from './i18n.js';
 import { CONFIG } from './config.js';
 
@@ -69,28 +69,51 @@ export function floatEmoji(emoji, { big = false } = {}) {
 }
 export const clearFloat = () => document.querySelector('.react-layer')?.remove();
 
-/** Imagen para compartir el resultado (Web Share si existe; si no, descarga). */
-export async function shareResult({ title, nick, rank, players, score, correct, total }) {
+/** Imagen para compartir el resultado, con los vinos del tast. Se enseña una vista previa para compartir o descargar. */
+const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+export async function shareResult({ title, nick, rank, players, score, correct, total, wines = '', date = 0 }) {
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
-  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#3a1020'); bg.addColorStop(1, '#14080c'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(214,175,92,.55)'; g.lineWidth = 6; g.strokeRect(40, 40, W - 80, H - 80);
-  g.textAlign = 'center'; g.fillStyle = '#f6efe4';
-  g.font = '120px serif'; g.fillText('🍷', W / 2, 250);
-  g.font = 'bold 54px Georgia, serif'; g.fillStyle = '#d6af5c'; g.fillText(CONFIG.brand.name, W / 2, 340);
-  g.fillStyle = '#f6efe4'; g.font = '40px Georgia, serif'; wrap(g, title, W / 2, 420, W - 200, 52);
-  g.font = 'bold 280px Georgia, serif'; g.fillStyle = rank <= 3 ? '#f0cf84' : '#f6efe4'; g.fillText('#' + rank, W / 2, 780);
-  g.font = '44px system-ui, sans-serif'; g.fillStyle = '#b8a8a6'; g.fillText(t('share.of', { n: players }), W / 2, 850);
-  g.fillStyle = '#f6efe4'; g.font = 'bold 72px Georgia, serif'; g.fillText(nick, W / 2, 990);
-  g.font = '52px system-ui, sans-serif'; g.fillStyle = '#d6af5c'; g.fillText(`${score} pts · ${correct}/${total} ✓`, W / 2, 1080);
-  g.font = '34px system-ui, sans-serif'; g.fillStyle = '#b8a8a6'; g.fillText(t('brand.tagline'), W / 2, 1230);
+  const WINE = '#a24a79', PINK = '#ba6c96', INK = '#2b1118', MUTED = '#7b6a6f', GOLD = '#d6af5c';
+  g.fillStyle = '#fbf8f7'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = PINK; g.lineWidth = 6; g.beginPath(); if (g.roundRect) g.roundRect(36, 36, W - 72, H - 72, 44); else g.rect(36, 36, W - 72, H - 72); g.stroke();
+  g.textAlign = 'center';
+  const logo = CONFIG.brand.logo ? await loadImg(CONFIG.brand.logo) : null;
+  if (logo) { const h = 120, w = (logo.width / logo.height) * h; g.drawImage(logo, (W - w) / 2, 80, w, h); }
+  else { g.fillStyle = INK; g.font = 'bold 96px Georgia, serif'; g.fillText(CONFIG.brand.name.toLowerCase(), W / 2, 170); }
+  g.fillStyle = GOLD; g.fillRect(W / 2 - 60, 238, 120, 4);
+  g.fillStyle = INK; g.font = 'italic 44px Georgia, serif'; const yT = wrap(g, title, W / 2, 312, W - 220, 54, 2);
+  if (date) { g.fillStyle = MUTED; g.font = '32px system-ui, sans-serif'; g.fillText(fmtDate(date, { day: 'numeric', month: 'long', year: 'numeric' }), W / 2, yT + 58); }
+  g.font = 'bold 300px Georgia, serif'; g.fillStyle = rank <= 3 ? WINE : INK; g.fillText('#' + rank, W / 2, 690);
+  g.font = '40px system-ui, sans-serif'; g.fillStyle = MUTED; g.fillText(t('share.of', { n: players }), W / 2, 760);
+  g.fillStyle = INK; g.font = 'bold 72px Georgia, serif'; g.fillText(nick, W / 2, 870);
+  g.font = '46px system-ui, sans-serif'; g.fillStyle = WINE; g.fillText(`${score} ${t('common.pts')} · ${correct}/${total} ✓`, W / 2, 944);
+  if (wines) {
+    g.fillStyle = PINK; g.fillRect(W / 2 - 40, 1000, 80, 3);
+    g.fillStyle = PINK; g.font = 'bold 30px system-ui, sans-serif'; g.fillText(t('share.wines'), W / 2, 1056);
+    g.fillStyle = INK; g.font = 'italic 38px Georgia, serif'; wrap(g, wines, W / 2, 1112, W - 260, 50, 3);
+  }
+  g.font = '30px system-ui, sans-serif'; g.fillStyle = MUTED; g.fillText(CONFIG.brand.web ? CONFIG.brand.web.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') : t('brand.tagline'), W / 2, 1268);
   const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
   const file = new File([blob], 'cata.png', { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: CONFIG.brand.name, text: t('share.text', { rank, title }) }); return; } catch (e) { if (e.name === 'AbortError') return; } }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mi-resultado.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  const url = URL.createObjectURL(blob);
+  const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+  const m = modal(html`<h3>${t('game.share')}</h3><img class="share-prev" src="${url}" alt="">
+    <div class="row mt" style="justify-content:center">${canShare ? html`<button class="btn primary" data-sh="send">${t('share.send')}</button>` : ''}<button class="btn ${canShare ? '' : 'primary'}" data-sh="save">${t('share.save')}</button></div>
+    <button class="btn ghost block mt" data-close>${t('common.back')}</button>`, { onClose: () => setTimeout(() => URL.revokeObjectURL(url), 500) });
+  m.el.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-sh]'); if (!b) return;
+    if (b.dataset.sh === 'send') { try { await navigator.share({ files: [file], title: CONFIG.brand.name, text: t('share.text', { rank, title }) }); } catch (ex) { if (ex.name !== 'AbortError') console.error(ex); } return; }
+    const a = document.createElement('a'); a.href = url; a.download = 'catarsi-resultat.png'; a.click();
+  });
 }
-function wrap(g, text, x, y, maxW, lh) {
-  const words = String(text).split(' '); let line = '', yy = y;
-  for (const w of words) { const test = line + w + ' '; if (g.measureText(test).width > maxW && line) { g.fillText(line.trim(), x, yy); line = w + ' '; yy += lh; } else line = test; }
-  g.fillText(line.trim(), x, yy);
+/** Escribe texto en varias líneas (máx. `maxLines`, con «…» si no cabe). Devuelve la y de la última línea. */
+function wrap(g, text, x, y, maxW, lh, maxLines = 99) {
+  const words = String(text).split(/\s+/).filter(Boolean); const lines = []; let line = '';
+  for (const w of words) { const test = line ? line + ' ' + w : w; if (g.measureText(test).width > maxW && line) { lines.push(line); line = w; } else line = test; }
+  if (line) lines.push(line);
+  const shown = lines.slice(0, maxLines);
+  if (lines.length > maxLines) shown[maxLines - 1] = shown[maxLines - 1].replace(/[\s,.;:]*$/, '') + '…';
+  shown.forEach((l, i) => g.fillText(l, x, y + i * lh));
+  return y + (shown.length - 1) * lh;
 }

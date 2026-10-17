@@ -5,22 +5,31 @@ import { t } from '../i18n.js';
 import { html, setHtml, on, formData, toast, modal, confirmBox, rid, num, fmtShortDate } from '../util.js';
 import { titleIndex, nextStep, TITLE_STEPS, BADGES, REWARD_ICON, spendable } from '../api.js';
 import { installBanner } from './catas.js';
+import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
 
 export default function view({ el }) {
   if (!loggedIn()) { setHtml(el, html`<div class="card center"><span class="big-ic">${icon('user', 34, 1.3)}</span><h2>${t('me.guest')}</h2><p class="muted">${t('me.guestText')}</p><a class="btn primary" href="#/login">${t('auth.loginOrSignup')}</a></div><div class="mt">${installBanner()}</div>`); return; }
   const uid = S.user.uid;
-  let lb = null, rewards = [], reds = [], results = [], saved = false;
+  let lb = null, rewards = [], reds = [], results = [], saved = false, stampDoc = null;
   const render = () => {
     const p = S.profile || {}; const pts = lb?.points || 0, ti = titleIndex(pts), nx = nextStep(pts);
     const prev = TITLE_STEPS[ti], pct = nx ? Math.round(((pts - prev) / (nx - prev)) * 100) : 100;
     const sp = spendable(lb, reds);
     const have = new Set(lb?.badges || []);
+    // tarjeta de sellos: 1 sello por cata jugada; al completarla aparece el código de descuento hasta que se use
+    const goal = CONFIG.stamps.goal, sPct = CONFIG.stamps.discountPct, cnt = stampDoc?.count || 0;
+    const stampReward = reds.find((r) => r.rewardId === 'stamps' && r.status === 'active');
+    const filled = stampReward && cnt > 0 && cnt % goal === 0 ? goal : cnt % goal;
     setHtml(el, html`
       <div class="card gold-edge center"><div class="muted small">${p.name || ''}</div><h1 style="margin:0">${p.nick || ''}</h1><div class="pill gold mt">${t('title.' + ti)}</div>
         <div class="bignum mt">${num(sp)}</div><div class="muted small">${t('me.available')} · ${t('me.total', { n: num(pts) })}</div>
         <div class="progress mt"><i style="width:${pct}%"></i></div><div class="small muted mt" style="margin-top:6px">${nx ? t('me.nextTitle', { n: num(nx - pts), title: t('title.' + (ti + 1)) }) : t('me.maxTitle')}</div>
         <div class="row wrap mt" style="justify-content:center"><span class="pill">${icon('dice', 14)}${t('ranking.games', { n: lb?.games || 0 })}</span><span class="pill">🥇 ${lb?.wins || 0}</span></div></div>
+      <h2 class="mt2">${t('stamps.title')}</h2>
+      <div class="card stamps"><p class="muted small" style="margin-top:0">${t('stamps.sub', { n: goal, pct: sPct })}</p>
+        <div class="stamp-row">${Array.from({ length: goal }, (_, i) => html`<span class="stamp ${i < filled ? 'on' : ''}" style="--i:${i}">${icon('glass', 24, 1.5)}</span>`)}</div>
+        ${stampReward ? html`<div class="stamp-reward"><b>🎁 ${t('stamps.reward', { pct: sPct })}</b><div class="code">${stampReward.code}</div><p class="small muted" style="margin:0">${t('stamps.showCode')}</p></div>` : html`<p class="small muted center" style="margin:10px 0 0">${goal - filled === 1 ? t('stamps.left1') : t('stamps.left', { n: goal - filled })}</p>`}</div>
       <h2 class="mt2">${t('me.badges')}</h2>
       <div class="grid c3">${BADGES.map((b) => html`<div class="card center" style="padding:12px 6px"><div class="badge-ic ${have.has(b.id) ? '' : 'off'}" style="margin:0 auto 6px">${b.icon}</div><div class="small"><b>${t('badge.' + b.id)}</b></div><div class="small muted">${t('badge.' + b.id + '.d')}</div></div>`)}</div>
       <h2 class="mt2">${t('me.rewards')}</h2>
@@ -40,6 +49,7 @@ export default function view({ el }) {
   };
   const subs = [
     db.onDoc('leaderboard/' + uid, (d) => { lb = d; render(); }),
+    db.onDoc('stamps/' + uid, (d) => { stampDoc = d; render(); }),
     db.onList('rewards', { where: [['active', '==', true]] }, (l) => { rewards = l.sort((a, b) => a.cost - b.cost); render(); }),
     db.onList('redemptions', { where: [['uid', '==', uid]] }, (l) => { reds = l; render(); }),
     db.onList('results', { where: [['uid', '==', uid]], orderBy: [['date', 'desc']], limit: 8 }, (l) => { results = l; render(); }),

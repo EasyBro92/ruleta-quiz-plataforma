@@ -6,13 +6,15 @@ import { html, setHtml, on, toast, sfx, isMuted, setMuted, confetti, celebrate, 
 import { standings, teamStandings, submitAnswer, rate, fastestLabel, sendReaction } from '../game.js';
 import { ring, updateRing, mediaBlock, optionsView, lbList, podium, shareResult, reactBar, floatEmoji, clearFloat } from '../ui-game.js';
 import { BADGES } from '../api.js';
+import { icon } from '../icons.js';
+import { CONFIG } from '../config.js';
 
 export default function view({ el, params }) {
   const sid = params.sid;
   if (!auth.current) { go('/play'); return; }
   const uid = auth.current.uid;
   let s = null, me = null, players = [], teams = [], myAns = null, res = null, stars = 0, rated = false, timeUp = false;
-  let lastReact = 0, lastSig = '', lastIdx = -2, lastStatus = '', startLocal = 0, timer = null, unAns = () => {}, unRes = () => {}, soundedEnd = false;
+  let cataInfo = null, lastReact = 0, lastSig = '', lastIdx = -2, lastStatus = '', startLocal = 0, timer = null, unAns = () => {}, unRes = () => {}, soundedEnd = false;
 
   const myTeam = () => teams.find((x) => x.id === me?.teamId);
   const header = () => html`<div class="head"><div class="row wrap"><span class="pill gold">🍷 ${me?.nick || ''}</span>${myTeam() ? html`<span class="pill" style="border-color:${myTeam().color}">${myTeam().name}</span>` : ''}</div>
@@ -79,6 +81,7 @@ export default function view({ el, params }) {
       ${podium(rank)}
       <div class="card center gold-edge"><div class="muted">${t('game.yourPos')}</div><div class="bignum">#${pos}<span class="muted small"> / ${rank.length}</span></div>
         <div class="row wrap mt" style="justify-content:center"><span class="pill gold">⭐ ${me?.score || 0} ${t('common.pts')}</span><span class="pill ok">✓ ${me?.correct || 0}/${total}</span></div>
+        ${res?.stamped ? html`<div class="stamp-won"><span class="stamp on">${icon('glass', 24, 1.5)}</span><div><b>${t('stamps.won', { n: ((res.stamps - 1) % CONFIG.stamps.goal) + 1, goal: CONFIG.stamps.goal })}</b>${res.stamps % CONFIG.stamps.goal === 0 ? html`<div class="small muted">${t('stamps.wonCard')}</div>` : ''}</div></div>` : ''}
         ${res ? html`<p class="small muted mt" style="margin-bottom:0">${t('game.addedRank', { n: res.pointsGained })}</p>` : loggedIn() ? html`<p class="small muted mt" style="margin-bottom:0">…</p>` : html`<p class="small muted mt" style="margin-bottom:0">${t('join.guest')} <a href="#/login">${t('auth.login')}</a></p>`}</div>
       ${nb.length ? html`<div class="card mt center"><h3>${t('game.newBadges')}</h3><div class="row wrap" style="justify-content:center">${nb.map((b) => html`<div class="center"><div class="badge-ic">${b.icon}</div><div class="small">${t('badge.' + b.id)}</div></div>`)}</div></div>` : ''}
       ${ts.length > 1 ? html`<h3 class="mt2">${t('game.teams')}</h3>${lbList(ts.map((x) => ({ ...x, nick: x.name })), me?.teamId || '', { colorOf: (x) => x.color })}` : ''}
@@ -111,6 +114,7 @@ export default function view({ el, params }) {
       unAns(); unAns = db.onDoc(`sessions/${sid}/answers/${idx}_${uid}`, (a) => { myAns = a; render(); });
     }
     if (s.status === 'reveal' && prev?.status !== 'reveal') { setTimeout(() => (me?.lastOk ? sfx.good() : me?.lastOk === false ? sfx.bad() : 0), 150); }
+    if (s.status === 'ended' && s.cataId && !cataInfo) db.get('catas/' + s.cataId).then((c) => { cataInfo = c; }).catch(() => {});
     if (s.status === 'ended' && !unRes.set && loggedIn()) { unRes.set = 1; unRes = Object.assign(db.onDoc(`results/${uid}_${sid}`, (r) => { res = r; render(true); }), { set: 1 }); }
     render();
   }
@@ -138,7 +142,7 @@ export default function view({ el, params }) {
     on(el, 'change', '[data-act="team"]', async (e, sel) => { await db.update(`sessions/${sid}/players/${uid}`, { teamId: sel.value }); }),
     on(el, 'click', '[data-star]', (e, b) => { stars = Number(b.dataset.star); render(true); }),
     on(el, 'submit', '#rateForm', async (e) => { e.preventDefault(); const f = formData(e.target); try { await rate(sid, uid, stars, f.comment); rated = true; render(true); } catch { toast(t('err.generic'), 'err'); } }),
-    on(el, 'click', '[data-act="share"]', () => { const rank = standings(players), pos = rank.findIndex((p) => p.id === uid) + 1; shareResult({ title: s.title, nick: me?.nick || '', rank: pos, players: rank.length, score: me?.score || 0, correct: me?.correct || 0, total: s.total }); }),
+    on(el, 'click', '[data-act="share"]', () => { const rank = standings(players), pos = rank.findIndex((p) => p.id === uid) + 1; shareResult({ title: s.title, nick: me?.nick || '', rank: pos, players: rank.length, score: me?.score || 0, correct: me?.correct || 0, total: s.total, wines: cataInfo?.wines || '', date: cataInfo?.startsAt || 0 }); }),
   ];
   render();
   return () => { clearInterval(timer); clearFloat(); subs.forEach((f) => f()); offs.forEach((f) => f()); unAns(); typeof unRes === 'function' && unRes(); };

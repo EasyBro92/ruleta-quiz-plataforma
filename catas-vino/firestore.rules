@@ -215,13 +215,25 @@ service cloud.firestore {
     match /redemptions/{id} {
       allow get, list: if isStaff() || (signedIn() && resource.data.uid == request.auth.uid);
       // canjear: el coste debe ser el del premio y el usuario debe tener al menos esos puntos
-      allow create: if isRegistered()
+      allow create: if (isRegistered()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status in ['active', 'entered']
         && request.resource.data.cost == get(/databases/$(database)/documents/rewards/$(request.resource.data.rewardId)).data.cost
-        && get(/databases/$(database)/documents/leaderboard/$(request.auth.uid)).data.points >= request.resource.data.cost;
+        && get(/databases/$(database)/documents/leaderboard/$(request.auth.uid)).data.points >= request.resource.data.cost)
+        // descuento de la tarjeta de sellos: lo crea el presentador al terminar la partida
+        || (isStaff() && request.resource.data.rewardId == 'stamps' && request.resource.data.cost == 0);
       allow update, delete: if isStaff();      // marcar como usado / anulado / ganador
     }
+
+    // tarjeta de sellos: un sello por cata jugada; lo escribe el presentador al terminar la partida
+    match /stamps/{uid} {
+      allow get: if isOwner(uid) || isStaff();
+      allow list, write: if isStaff();
+    }
+
+    // portada: opiniones destacadas y galería de fotos (las gestiona el equipo)
+    match /reviews/{id} { allow read: if true; allow write: if isStaff(); }
+    match /gallery/{id} { allow read: if true; allow write: if isStaff(); }
 
     // todo lo demás, cerrado
     match /{document=**} { allow read, write: if false; }

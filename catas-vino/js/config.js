@@ -47,6 +47,8 @@ export const CONFIG = {
   minAge: 18,
   game: { basePoints: 100, speedBonusMax: 50, defaultSeconds: 20 },
   ranking: { pointsPerGame: 0 },  // puntos extra por participar (0 = ninguno)
+  stamps: { goal: 5, discountPct: 10 },   // tarjeta de sellos: 1 sello por cata jugada; al llegar a `goal`, descuento del `discountPct` %
+  trust: { minRatings: 3 },       // la valoración media solo sale en la portada a partir de este número de valoraciones
 
   // Si usas Google/Apple como método de acceso, actívalos en Firebase → Authentication
   loginMethods: { email: true, google: true, apple: true },

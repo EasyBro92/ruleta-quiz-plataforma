@@ -4,6 +4,8 @@
 import { db } from './store.js';
 import { CONFIG } from './config.js';
 import { joinCode, clamp, rid } from './util.js';
+import { tMain } from './i18n.js';
+import { sendNotice } from './api.js';
 
 export const TEAM_COLORS = ['#b32a4d', '#3e6fbf', '#d6af5c', '#3fa57c', '#9b59b6', '#e67e22', '#16a0a8', '#c0617a'];
 const sp = (sid) => `sessions/${sid}`;
@@ -125,7 +127,8 @@ export async function endSession(sid) {
   const tRank = teamStandings(players, teams);
   const final = { top: rank.slice(0, 10).map((p) => ({ uid: p.id, nick: p.nick, score: p.score || 0, teamId: p.teamId || '' })), teams: tRank.map((t) => ({ id: t.id, name: t.name, color: t.color, score: t.score, members: t.members })), players: rank.length };
   await db.update(sp(sid), { status: 'ended', announce: false, endedAt: db.ts(), 'cur.open': false, final });
-  const ops = [];
+  const ops = [], won = [];
+  const goal = CONFIG.stamps?.goal || 5;
   for (let idx = 0; idx < rank.length; idx++) {
     const p = rank[idx];
     if (!p.registered) continue;
@@ -140,11 +143,25 @@ export async function endSession(sid) {
     if (s.total >= 5 && p.correct === s.total) badges.add('perfect');
     const tIdx = p.teamId ? tRank.findIndex((t) => t.id === p.teamId) : -1;
     if (tIdx === 0 && tRank.filter((t) => t.members > 0).length >= 2) badges.add('team_win');
+    // tarjeta de sellos: 1 sello por cata (si se juegan dos partidas en la misma cata, cuenta una); al completarla, descuento
+    const key = s.cataId || sid;
+    const st = (await db.get('stamps/' + p.id)) || { count: 0, keys: [] };
+    const fresh = !(st.keys || []).includes(key);
+    const stamps = (st.count || 0) + (fresh ? 1 : 0);
+    if (fresh) {
+      ops.push(['set', 'stamps/' + p.id, { uid: p.id, nick: p.nick, count: stamps, keys: [...(st.keys || []), key].slice(-200), updatedAt: db.ts() }]);
+      if (stamps % goal === 0) {
+        const code = rid(6).toUpperCase();
+        ops.push(['set', 'redemptions/' + rid(), { uid: p.id, nick: p.nick, rewardId: 'stamps', title: tMain('a.stamps.rewardTitle', { pct: CONFIG.stamps?.discountPct || 10 }), type: 'discount', cost: 0, code, status: 'active', createdAt: db.ts() }]);
+        won.push({ uid: p.id, code });
+      }
+    }
     const gained = (p.score || 0) + (CONFIG.ranking.pointsPerGame || 0);
     ops.push(['set', 'leaderboard/' + p.id, { uid: p.id, nick: p.nick, points: (lb.points || 0) + gained, games: (lb.games || 0) + 1, wins: (lb.wins || 0) + (pos === 1 && rank.length >= 2 ? 1 : 0), badges: [...badges], updatedAt: db.ts() }]);
-    ops.push(['set', `results/${p.id}_${sid}`, { uid: p.id, sid, title: s.title, date: Date.now(), score: p.score || 0, rank: pos, players: rank.length, correct: p.correct || 0, total: s.total, teamName: tIdx >= 0 ? tRank[tIdx].name : '', teamRank: tIdx >= 0 ? tIdx + 1 : 0, newBadges: [...badges].filter((b) => !before.has(b)), pointsGained: gained }]);
+    ops.push(['set', `results/${p.id}_${sid}`, { uid: p.id, sid, title: s.title, date: Date.now(), score: p.score || 0, rank: pos, players: rank.length, correct: p.correct || 0, total: s.total, cataId: s.cataId || '', stamped: fresh, stamps, teamName: tIdx >= 0 ? tRank[tIdx].name : '', teamRank: tIdx >= 0 ? tIdx + 1 : 0, newBadges: [...badges].filter((b) => !before.has(b)), pointsGained: gained }]);
   }
   for (const part of chunk(ops, 400)) await db.batch(part);
+  for (const w of won) await sendNotice(w.uid, 'stamp_reward', { title: w.code }, '/me');
 }
 
 export const fastestLabel = (ms) => (ms / 1000).toFixed(1).replace('.', ',') + ' s';

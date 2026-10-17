@@ -90,6 +90,16 @@ export async function answerPrivateRequest(req, status, { counterDate = '', coun
   await sendNotice(req.uid, 'private_' + status, { date: req.date, counterDate, note: counterNote }, '/private');
 }
 
+// ---------- confianza: valoración media (la calcula el equipo; la portada solo lee el resultado) ----------
+export async function updateTrustStats() {
+  const sessions = await db.list('sessions', { orderBy: [['createdAt', 'desc']], limit: 100 });
+  let sum = 0, n = 0;
+  for (const s of sessions) { const rs = await db.list(`sessions/${s.id}/ratings`).catch(() => []); rs.forEach((r) => { if (r.stars >= 1 && r.stars <= 5) { sum += r.stars; n++; } }); }
+  const out = { avg: n ? Math.round((sum / n) * 10) / 10 : 0, count: n };
+  await db.set('settings/trust', { ...out, updatedAt: db.ts() });
+  return out;
+}
+
 // ---------- ranking acumulado, títulos e insignias ----------
 export const TITLE_STEPS = [0, 200, 600, 1500, 3000];
 export const titleIndex = (pts) => { let i = 0; TITLE_STEPS.forEach((s, k) => { if (pts >= s) i = k; }); return i; };
