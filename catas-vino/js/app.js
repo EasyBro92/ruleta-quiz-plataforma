@@ -5,6 +5,7 @@ import { S, bus, go } from './state.js';
 import { loadLang, t } from './i18n.js';
 import { html, setHtml, on, toast, modal, setLocale, formData, raw, esc } from './util.js';
 import { icon } from './icons.js';
+import { installBar, instalar, cerrarBarra } from './install.js';
 
 // ---------- rutas: [patrón, vista, opciones] ----------
 const ROUTES = [
@@ -50,7 +51,7 @@ function renderShell(chrome, wide, nav) {
   const lang = CONFIG.languages.map(([c, n]) => `<option value="${c}" ${c === S.lang ? 'selected' : ''}>${esc(n)}</option>`).join('');
   if (!chrome) { setHtml(app(), html`<main class="full" id="view"></main>`); chromeMode = 'none'; return; }
   const demo = isDemo() ? html`<div class="demo-bar">${t('demo.bar')} · <a href="#" data-act="demo-info">${t('demo.accounts')}</a> · <a href="#" data-act="demo-reset">${t('demo.reset')}</a></div>` : '';
-  setHtml(app(), html`${demo}
+  setHtml(app(), html`<div id="installSlot">${installBar()}</div>${demo}
     <header class="topbar">
       <a class="brand" href="#/" aria-label="${CONFIG.brand.name}">${CONFIG.brand.logo ? html`<img src="${CONFIG.brand.logo}" alt="" data-brand-logo>` : html`${icon('glass', 22, 1.5)}<span>${CONFIG.brand.name}</span>`}</a>
       <span class="grow"></span>
@@ -67,6 +68,8 @@ function markNav(nav, wide) {
   document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.nav === nav));
   const m = document.querySelector('main'); if (m) m.classList.toggle('wide', !!wide);
 }
+// la barra de instalar se repinta sola cuando el navegador avisa de que ya se puede instalar (o cuando se instala)
+function paintInstall() { const s = document.getElementById('installSlot'); if (s) setHtml(s, installBar()); }
 function refreshBell() {
   const b = document.querySelector('.topbar a.icon-btn');
   if (b) { const d = b.querySelector('.dot'); if (S.unread && !d) b.insertAdjacentHTML('beforeend', '<span class="dot"></span>'); if (!S.unread && d) d.remove(); }
@@ -175,10 +178,12 @@ function bindGlobal() {
   document.addEventListener('change', (e) => { if (e.target.id === 'lang') { setLang(e.target.value); if (S.user && !S.user.anonymous && S.profile) db.update(`users/${S.user.uid}`, { lang: e.target.value }).catch(() => {}); } });
   document.addEventListener('click', async (e) => {
     const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'install') { e.preventDefault(); instalar(); return; }
+    if (a.dataset.act === 'install-close') { e.preventDefault(); cerrarBarra(); return; }
     if (a.dataset.act === 'demo-reset') { e.preventDefault(); db.reset(); await auth.signOut(); toast(t('demo.restored')); go('/'); }
     if (a.dataset.act === 'demo-info') { e.preventDefault(); modal(html`<h3>${t('demo.accounts')}</h3><p><b>${t('demo.admin')}</b><br>admin@demo.com · demo1234</p><p><b>${t('demo.client')}</b><br>ana@demo.com · demo1234</p><p class="muted small">${t('demo.note')}</p><button class="btn block" data-close>${t('common.ok')}</button>`); }
   });
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); S.installEvent = e; bus.emit('install'); });
+  bus.on('install', paintInstall);
   window.addEventListener('db-error', (e) => { const c = e.detail?.code || ''; toast(c === 'permission-denied' ? t('err.noaccess') : t('err.generic'), 'err'); });
   window.addEventListener('unhandledrejection', (e) => { const c = e.reason?.code || ''; if (c === 'permission-denied') { toast(t('err.noaccess'), 'err'); } });
 }

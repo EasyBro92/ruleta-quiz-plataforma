@@ -208,6 +208,15 @@ th { color: var(--muted); font-weight: 500; font-size: .8rem; }
 .toast.err { background: #8a1a30; }
 .install { display: flex; gap: 12px; align-items: center; background: var(--gold-soft); border: 1px solid var(--gold-line); border-radius: 14px; padding: 12px 14px; font-size: .88rem; }
 .install > svg { width: 24px; height: 24px; color: var(--gold); flex: none; }
+/* barra de instalar: lo primero de la pantalla, por encima de todo */
+.install-bar { position: relative; z-index: 30; display: flex; align-items: center; gap: 10px; padding: 8px 6px 8px 12px; background: var(--wine-deep); color: #fff; font-size: .86rem; font-weight: 500; line-height: 1.25; }
+.install-bar img { flex: none; width: 30px; height: 30px; border-radius: 8px; background: #fff; }
+.install-bar .btn.sm { flex: none; min-height: 34px; }
+.install-x { flex: none; width: 34px; height: 34px; display: grid; place-items: center; background: transparent; border: 0; border-radius: 50%; color: rgba(255,255,255,.8); font: inherit; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.install-x:hover, .install-x:focus-visible { background: rgba(255,255,255,.14); color: #fff; }
+.ios-steps { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 12px; }
+.ios-steps li { display: flex; gap: 12px; align-items: center; }
+.ios-steps .step-ic { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--gold-soft); border: 1px solid var(--gold-line); color: var(--gold); }
 .demo-bar { background: var(--gold-soft); color: #5a3b0a; font-size: .78rem; padding: 4px 10px; text-align: center; border-bottom: 1px solid var(--gold-line); }
 .demo-bar a { color: var(--wine); }
 

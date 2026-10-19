@@ -4,7 +4,7 @@ import { S, go, loggedIn, isStaff } from '../state.js';
 import { t } from '../i18n.js';
 import { html, setHtml, on, formData, toast, modal, confirmBox, rid, num, fmtShortDate } from '../util.js';
 import { titleIndex, nextStep, TITLE_STEPS, BADGES, REWARD_ICON, spendable } from '../api.js';
-import { installBanner } from './catas.js';
+import { installBanner } from '../install.js';
 import { CONFIG } from '../config.js';
 import { icon } from '../icons.js';
 

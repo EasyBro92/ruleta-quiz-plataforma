@@ -63,13 +63,6 @@ function carSync(root) {
   if (next) next.disabled = !canNext;
 }
 
-export function installBanner() {
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.navigator.standalone && !matchMedia('(display-mode: standalone)').matches;
-  if (S.installEvent) return html`<div class="install">${icon('download', 24)}<span class="grow">${t('install.text')}</span><button class="btn sm gold" data-act="install">${t('install.btn')}</button></div>`;
-  if (ios) return html`<div class="install">${icon('download', 24)}<span class="grow">${t('install.ios')}</span></div>`;
-  return '';
-}
-
 // si el logo o la foto no cargan (p. ej. sin conexión), se enseña el marcador en vez de una imagen rota
 const brokenImg = new Set();
 
@@ -172,7 +165,6 @@ export default function view({ el }) {
       <div id="trustSlot">${trustBlock()}</div>
       ${news ? html`<section class="sect"><div class="news">${icon('megaphone', 22)}<div><h3>${news.title}</h3><p class="muted small" style="margin:0">${news.body}</p></div></div></section>` : ''}
       <section class="sect"><div class="private-cta"><h3>${t('home.privateTitle')}</h3><p>${t('home.privateText')}</p><div class="cta-row"><a class="btn primary" href="#/private">${t('home.private')}</a></div><div class="cta-contact">${contactBlock()}</div></div></section>
-      <div class="sect">${installBanner()}</div>
     `);
     el.querySelectorAll('img[data-brand]').forEach((img) => img.addEventListener('error', () => { brokenImg.add(img.dataset.brand); render(); }, { once: true }));
     const track = el.querySelector('[data-car-track]');
@@ -190,10 +182,8 @@ export default function view({ el }) {
   const u6 = db.onList('reviews', { orderBy: [['featuredAt', 'desc']], limit: 6 }, (l) => { reviews = l; paintTrust(); });
   const u7 = db.onList('gallery', { orderBy: [['createdAt', 'desc']], limit: 8 }, (l) => { gallery = l; paintTrust(); });
   const u2 = db.onList('announcements', { orderBy: [['createdAt', 'desc']], limit: 1 }, (r) => { news = r[0] || null; render(); });
-  const u3 = bus.on('install', render);
   const click = async (e) => {
     const tgt = e.target;
-    if (tgt.closest('[data-act="install"]') && S.installEvent) { S.installEvent.prompt(); await S.installEvent.userChoice.catch(() => {}); S.installEvent = null; render(); return; }
     if (tgt.closest('[data-act="to-calendar"]')) { const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; el.querySelector('#calendario')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); return; }
     const go = tgt.closest('[data-car-go]'), dot = tgt.closest('[data-car-dot]');
     if (go || dot) {
@@ -211,5 +201,5 @@ export default function view({ el }) {
   };
   el.addEventListener('click', click);
   render();
-  return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); el.removeEventListener('click', click); };
+  return () => { u1(); u2(); u4(); u5(); u6(); u7(); el.removeEventListener('click', click); };
 }
