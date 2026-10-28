@@ -15,7 +15,8 @@ export default function view({ el, params, query }) {
   const renderCode = () => setHtml(el, html`<div class="center mb"><span class="big-ic">${icon('dice', 34, 1.3)}</span><h1>${t('join.title')}</h1><p class="muted">${t('join.intro')}</p></div>
     <form class="card center" id="codeForm">${err ? html`<div class="err">${err}</div>` : ''}
       <label class="field"><span>${t('join.code')}</span><input name="code" maxlength="6" autocomplete="off" autocapitalize="characters" required style="text-align:center;font-size:2rem;letter-spacing:.3em;text-transform:uppercase" value="${code}"></label>
-      <button class="btn primary block" ${busy ? 'disabled' : ''}>${t('join.go')}</button></form>`);
+      <button class="btn primary block" ${busy ? 'disabled' : ''}>${t('join.go')}</button></form>
+    <a class="card tr-entry" href="#/trivial"><span class="tr-entry-ic">${icon('crown', 26, 1.5)}</span><span class="grow"><b>${t('trivial.title')}</b><small>${t('trivial.tag')}</small></span>${icon('right', 20)}</a>`);
 
   const renderForm = () => {
     const mode = sess.teamMode;

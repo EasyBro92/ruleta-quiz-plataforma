@@ -1,6 +1,6 @@
 /* Service worker: guarda los archivos de la app para que abra rápido y funcione sin conexión
    (los datos en vivo siguen necesitando internet). Sube el número de VERSION al publicar cambios. */
-const VERSION = 'catas-v10';
+const VERSION = 'catas-v11';
 const CORE = ['./', './index.html', './css/app.css', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './img/logo-catarsi.png', './img/logo-apertura.png'];
 
 self.addEventListener('install', (e) => {
