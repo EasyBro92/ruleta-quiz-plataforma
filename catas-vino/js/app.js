@@ -15,7 +15,7 @@ const ROUTES = [
   ['/private', 'private', { nav: 'home' }],
   ['/play', 'join', { nav: 'play' }],
   ['/join/:code', 'join', { nav: 'play' }],
-  ['/trivial', 'trivial', { nav: 'play' }],
+  ['/trivial', 'trivial', { chrome: false }],
   ['/game/:sid', 'game', { chrome: false }],
   ['/screen/:code', 'screen', { chrome: false }],
   ['/ranking', 'ranking', { nav: 'ranking' }],
