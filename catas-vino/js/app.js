@@ -88,7 +88,12 @@ function hideSplash() {
 
 // ---------- enrutado ----------
 async function route() {
+  // Hay una versión nueva ya instalada: se recarga aquí (en un cambio de pantalla, nunca a media pregunta) para no mezclar
+  // la vista nueva con el CSS, los textos y el app.js de la versión anterior, que es lo que dejaba botones y textos rotos.
+  if (S.recargar) { location.reload(); return; }
   const my = ++token;
+  // un diálogo abierto (p. ej. «Vols sortir?») no debe quedarse flotando sobre otra pantalla
+  document.querySelectorAll('#modal-root .modal-bg').forEach((b) => b.dispatchEvent(new MouseEvent('mousedown')));
   cleanup && (await Promise.resolve(cleanup())); cleanup = null;
   const full = location.hash.replace(/^#/, '') || '/';
   const [path, qs] = full.split('?');
@@ -110,7 +115,10 @@ async function route() {
     cleanup = await mod.default({ el, params, query, path: full });
   } catch (e) {
     console.error(e);
-    if (my === token) setHtml(el, html`<div class="card"><h3>${t('err.generic')}</h3><p class="muted small">${String(e.message || e)}</p><a class="btn" href="#/">${t('common.home')}</a></div>`);
+    // un import() que falla queda marcado en esta página: solo se arregla recargando
+    const red = /dynamically imported module|Importing a module script failed|Failed to fetch/i.test(String(e?.message || e));
+    if (my === token) setHtml(el, html`<div class="card"><h3>${red ? t('err.connect') : t('err.generic')}</h3>
+      <div class="row mt"><button class="btn primary" data-act="reload">${t('common.retry')}</button><a class="btn ghost" href="#/">${t('common.home')}</a></div></div>`);
   }
   if (my === token) hideSplash();
 }
@@ -179,6 +187,7 @@ function bindGlobal() {
   document.addEventListener('change', (e) => { if (e.target.id === 'lang') { setLang(e.target.value); if (S.user && !S.user.anonymous && S.profile) db.update(`users/${S.user.uid}`, { lang: e.target.value }).catch(() => {}); } });
   document.addEventListener('click', async (e) => {
     const a = e.target.closest('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'reload') { e.preventDefault(); location.reload(); return; }
     if (a.dataset.act === 'install') { e.preventDefault(); instalar(); return; }
     if (a.dataset.act === 'install-close') { e.preventDefault(); cerrarBarra(); return; }
     if (a.dataset.act === 'demo-reset') { e.preventDefault(); db.reset(); await auth.signOut(); toast(t('demo.restored')); go('/'); }
@@ -198,9 +207,19 @@ async function main() {
     lang = CONFIG.languages.some(([c]) => c === nav) && !(CONFIG.noAutoLang || []).includes(nav) ? nav : CONFIG.defaultLang;
   }
   S.lang = lang; await loadLang(lang); setLocale(lang); document.documentElement.lang = lang;
-  try { await initStore(); } catch (e) { console.error(e); setHtml(app(), html`<div class="card" style="margin:20px"><h3>${t('err.connect')}</h3><p class="muted">${String(e.message || e)}</p></div>`); hideSplash(); return; }
+  try { await initStore(); } catch (e) { console.error(e); setHtml(app(), html`<div class="card" style="margin:20px"><h3>${t('err.connect')}</h3><button class="btn primary mt" id="reintentar">${t('common.retry')}</button></div>`); document.getElementById('reintentar')?.addEventListener('click', () => location.reload()); hideSplash(); return; }
   bindGlobal();
-  try { if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch { /* sin service worker (p. ej. dentro de un visor) */ }
+  try {
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      const teniaVersion = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // una PWA abierta durante días no navega nunca (solo cambia el #): se busca versión nueva al volver a primer plano
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+      }).catch(() => {});
+      // cuando se instala una versión nueva se recarga en el próximo cambio de pantalla
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (teniaVersion) S.recargar = true; });
+    }
+  } catch { /* sin service worker (p. ej. dentro de un visor) */ }
   auth.onChange(onAuth);
 }
 main();

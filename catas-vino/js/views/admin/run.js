@@ -18,10 +18,11 @@ export default function view({ el, params }) {
   const remaining = () => (s?.cur ? Math.max(0, s.cur.durationSec - (Date.now() - startLocal) / 1000) : 0);
 
   function sig() {
-    return JSON.stringify([s, players.map((p) => [p.id, p.nick, p.score, p.teamId, p.lastOk].join(':')), teams.map((x) => x.id + x.name + x.code), answers.length, qCur?.correct, qNext?.prompt, ratings.length, busy]);
+    return JSON.stringify([{ ...s, answeredCount: 0 }, players.map((p) => [p.id, p.nick, p.score, p.teamId, p.lastOk].join(':')), teams.map((x) => x.id + x.name + x.code), qCur?.correct, qNext?.prompt, ratings.length, busy]);
   }
   function render(force = false) {
     if (!s) return;
+    const ac = el.querySelector('[data-answered]'); if (ac) ac.textContent = t('game.answered', { a: answers.length, n: players.length });
     const sg = sig(); if (!force && sg === lastSig) return; lastSig = sg;
     let body = '';
     if (s.status === 'lobby') body = lobby();
@@ -54,7 +55,7 @@ export default function view({ el, params }) {
   // ---------- pregunta en juego ----------
   const question = () => {
     const c = s.cur;
-    return html`<div class="row between mb"><span class="pill gold">${t('game.question', { i: c.index + 1, n: s.total })}</span><div class="row"><span class="pill">${t('game.answered', { a: answers.length, n: players.length })}</span>${c.open ? ring(remaining(), c.durationSec) : ''}</div></div>
+    return html`<div class="row between mb"><span class="pill gold">${t('game.question', { i: c.index + 1, n: s.total })}</span><div class="row"><span class="pill" data-answered>${t('game.answered', { a: answers.length, n: players.length })}</span>${c.open ? ring(remaining(), c.durationSec) : ''}</div></div>
       <div class="card qbox">${c.ref ? html`<span class="pill cat">${c.ref}</span>` : ''}<h2>${c.prompt}</h2>${mediaBlock(c)}</div>
       <div class="opts two">${c.options.map((o, i) => html`<div class="opt c${i % 4}"><span class="ltr">${LETTERS[i]}</span><span>${o}</span>${qCur && qCur.correct === i ? html`<span class="cnt">✓ ${t('a.q.correct').toLowerCase()}</span>` : ''}</div>`)}</div>
       <div class="row between wrap mt"><label class="check" style="margin:0"><input type="checkbox" id="autoAll" ${autoAll ? 'checked' : ''}><span>${t('a.run.autoAll')}</span></label><button class="btn gold" data-act="reveal">${t('a.run.revealNow')}</button></div>`;
@@ -117,6 +118,11 @@ export default function view({ el, params }) {
   subs.players = db.onList(`${sp}/players`, {}, (l) => { players = l; syncAnswered(); render(); });
   subs.teams = db.onList(`${sp}/teams`, {}, (l) => { teams = l; render(); });
   timer = setInterval(tick, 250);
+  // el presentador es quien revela las preguntas: si el móvil se bloquea, el juego se queda colgado. Se pide que la pantalla siga encendida.
+  let wl = null;
+  const pedirPantalla = async () => { try { if (navigator.wakeLock && !document.hidden) wl = await navigator.wakeLock.request('screen'); } catch { /* no disponible */ } };
+  const volverPantalla = () => { if (!document.hidden) pedirPantalla(); };
+  pedirPantalla(); document.addEventListener('visibilitychange', volverPantalla);
 
   const run = async (fn, errMsg = t('err.generic')) => { busy = true; render(true); try { await fn(); } catch (e) { console.error(e); toast(errMsg, 'err'); } busy = false; render(true); };
   const offs = [
@@ -135,5 +141,5 @@ export default function view({ el, params }) {
     }),
   ];
   setHtml(el, html`<div class="empty">…</div>`);
-  return () => { clearInterval(timer); clearTimeout(acTimer); Object.values(subs).forEach((f) => f()); subAns(); subQ(); subNext(); offs.forEach((f) => f()); };
+  return () => { clearInterval(timer); clearTimeout(acTimer); document.removeEventListener('visibilitychange', volverPantalla); try { wl?.release().catch(() => {}); } catch { /* nada */ } Object.values(subs).forEach((f) => f()); subAns(); subQ(); subNext(); offs.forEach((f) => f()); };
 }

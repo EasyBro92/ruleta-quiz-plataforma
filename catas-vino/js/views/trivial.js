@@ -3,8 +3,8 @@
    de «Següent» quedaban justo debajo de ella y al pulsar se tocaba la barra. Aquí el botón principal vive en un
    «dock» fijo abajo y lo que sobra de contenido se desplaza por encima, así que siempre se alcanza. */
 import { t } from '../i18n.js';
-import { go } from '../state.js';
-import { html, raw, setHtml, on, sfx, celebrate, confetti, confirmBox } from '../util.js';
+import { go, S } from '../state.js';
+import { html, raw, setHtml, on, sfx, celebrate, confetti, confirmBox, toast } from '../util.js';
 import { icon } from '../icons.js';
 import { LETTERS } from '../ui-game.js';
 import { CATS } from '../trivial-data.js';
@@ -54,7 +54,7 @@ const wheelSvg = (won, angle) => {
 export default function view({ el }) {
   let st = T.carregar();
   const estats = T.llegirEstats();
-  let phase = 'inici', cur = null, res = null, closed = false;
+  let phase = 'inici', cur = null, res = null, closed = false, record = false, dockAt = 0, pausa = null;
   let timer = null, endAt = 0, lastTick = 99, spinTimer = null, alive = true, angle = 0, spinning = false;
   const pending = new Set();
   const later = (fn, ms) => { const id = setTimeout(() => { pending.delete(id); if (alive) fn(); }, ms); pending.add(id); return id; };
@@ -85,13 +85,14 @@ export default function view({ el }) {
     return html`<button class="trg-opt ${cls.join(' ')}" data-choice="${i}" style="--i:${i}" ${done || v.ocults.includes(i) ? 'disabled' : ''}><span class="trg-ltr">${LETTERS[i]}</span><span class="trg-txt">${o}</span><span class="trg-mark">${mark}</span></button>`;
   })}</div>`;
 
-  const toolsView = () => html`<div class="trg-tools">
-    <button class="trg-tool" data-act="half" ${st.comodins.meitat < 1 || cur.ocults.length ? 'disabled' : ''}><b>50:50</b></button>
-    <button class="trg-tool" data-act="swap" ${st.comodins.canvia < 1 ? 'disabled' : ''}>${icon('dice', 19, 1.8)}<span>${t('trivial.swap')}</span></button></div>`;
+  // los comodines van junto al reloj (iconos pequeños): en el dock, en pantallas bajas se comían las dos últimas respuestas
+  const toolsView = () => html`<div class="trg-tools" id="trTools">
+    <button class="trg-tool" data-act="half" aria-label="50:50" title="50:50" ${st.comodins.meitat < 1 || cur.ocults.length ? 'disabled' : ''}><b>50:50</b></button>
+    <button class="trg-tool" data-act="swap" aria-label="${t('trivial.swap')}" title="${t('trivial.swap')}" ${st.comodins.canvia < 1 ? 'disabled' : ''}>${icon('dice', 19, 1.8)}</button></div>`;
 
   // «dock»: lo único fijo abajo (botón principal); el resto del contenido se desplaza por encima
-  const screen = (top, main, dock, cls = '') => setHtml(el, html`<div class="trg"><div class="trg-in ${cls}">${top}<div class="trg-main" id="trMain">${main}</div><div class="trg-dock" id="trDock">${dock}</div></div></div>`);
-  const dockSet = (d) => { const x = el.querySelector('#trDock'); if (x) setHtml(x, d); };
+  const screen = (top, main, dock, cls = '') => { dockAt = performance.now(); return setHtml(el, html`<div class="trg"><div class="trg-in ${cls}">${top}<div class="trg-main" id="trMain">${main}</div><div class="trg-dock" id="trDock">${dock}</div></div></div>`); };
+  const dockSet = (d) => { dockAt = performance.now(); const x = el.querySelector('#trDock'); if (x) setHtml(x, d); };
 
   // ---------- pantallas ----------
   const renderStart = () => {
@@ -104,7 +105,9 @@ export default function view({ el }) {
         <li>${icon('clock', 20, 1.7)}<span>${t('trivial.rule1', { s: T.TEMPS })}</span></li>
         <li>${icon('crown', 20, 1.7)}<span>${t('trivial.rule2')}</span></li>
         <li>${icon('glass', 20, 1.7)}<span>${t('trivial.rule3', { n: T.VIDES_INICIALS, m: T.VIDES_MAX })}</span></li>
-        <li>${icon('trophy', 20, 1.7)}<span>${t('trivial.rule4')}</span></li></ul>
+        <li>${icon('trophy', 20, 1.7)}<span>${t('trivial.rule4')}</span></li>
+        <li>${icon('dice', 20, 1.7)}<span>${t('trivial.rule5')}</span></li></ul>
+      ${S.lang && S.lang !== 'ca' ? html`<p class="trg-langnote">${t('trivial.catsNote')}</p>` : ''}
       <div class="trg-topics">${CATS.map((c) => chip(c.key))}</div>`,
     st ? html`<button class="trg-btn" data-act="resume"><span>${t('trivial.resume')}<small>${t('trivial.resumeInfo', { n: st.corones.length, p: st.punts })}</small></span></button>
         <button class="trg-btn alt" data-act="new">${t('trivial.start')}</button>`
@@ -117,19 +120,20 @@ export default function view({ el }) {
     screen(hud(), html`${rail(st)}${repte
       ? html`<div class="trg-crown" style="${catVars(CAT[repte])}"><span class="trg-crown-ic">${icon('crown', 40, 1.4)}</span><h2>${t('trivial.crownTitle')}</h2>${chip(repte)}
           <p>${t('trivial.crownText', { cat: catName(repte) })}</p><p class="trg-hint">${t('trivial.crownRisk')}</p></div>`
-      : html`<div class="trg-wheelbox"><p class="trg-prompt" id="trPrompt">${t('trivial.which')}</p><div class="trg-wheel" id="trWheelBox">${wheelSvg(st.corones, angle)}</div></div>`}`,
+      : html`<div class="trg-wheelbox"><p class="trg-prompt" id="trPrompt">${t('trivial.which')}</p><div class="trg-wheel tap" id="trWheelBox" data-act="spin">${wheelSvg(st.corones, angle)}</div></div>`}`,
     repte ? html`<button class="trg-btn" data-act="crown">${icon('crown', 20, 2)}${t('trivial.crownGo')}</button>`
       : html`<button class="trg-btn" data-act="spin" ${spinning ? 'disabled' : ''}>${t('trivial.spin')}</button>`);
   };
 
-  const renderQ = () => {
+  const renderQ = (secs = T.TEMPS) => {
     phase = 'pregunta';
     const c = CAT[cur.cat];
-    screen(hud(), html`<div class="trg-qmeta" style="${catVars(c)}">${chip(cur.cat)}${cur.corona ? html`<span class="trg-ribbon">${icon('crown', 14, 2.2)}${t('trivial.crownTag')}</span>` : ''}<span class="trg-sec" id="trSec">${T.TEMPS}</span></div>
-      <div class="trg-time" aria-hidden="true"><i id="trBar"></i></div>
-      <div class="trg-q ${cur.corona ? 'gold' : ''}" style="${catVars(c)}"><h2>${cur.prompt}</h2></div>
-      ${optsView(cur, { enter: true })}<div id="trFb" aria-live="polite"></div>`, toolsView(), 'q');
-    startTimer();
+    screen(hud(), html`<div class="trg-qmeta" style="${catVars(c)}">${chip(cur.cat)}${cur.corona ? html`<span class="trg-ribbon">${icon('crown', 14, 2.2)}${t('trivial.crownTag')}</span>` : ''}</div>
+      <div class="trg-timerow"><span class="trg-sec" id="trSec">${T.TEMPS}</span><div class="trg-time" aria-hidden="true"><i id="trBar"></i></div>${toolsView()}</div>
+      <div class="trg-q ${cur.corona ? 'gold' : ''}" style="${catVars(c)}"><h2 tabindex="-1">${cur.prompt}</h2></div>
+      ${optsView(cur, { enter: true })}<div id="trFb" aria-live="polite"></div>`, '', 'q');
+    el.querySelector('.trg-q h2')?.focus({ preventScroll: true });     // los lectores de pantalla leen la pregunta nueva
+    startTimer(secs);
   };
 
   const showFb = () => {
@@ -141,9 +145,11 @@ export default function view({ el }) {
       ${res.ok ? '' : html`<p class="trg-was">${t('trivial.answerWas', { a: v.opcions[v.correcta] })}</p>`}
       <p class="trg-why">${v.explicacio}</p>
       ${res.coronaGuanyada ? html`<p class="trg-note is-ok">${icon('crown', 16, 2)}<span>${t('trivial.crownWon', { cat: catName(v.cat) })}${res.vidaExtra ? ' · ' + t('trivial.lifeUp') : ''}</span></p>` : ''}
-      ${res.coronaPerduda ? html`<p class="trg-note is-ko"><span>${t('trivial.crownLost', { cat: catName(v.cat) })}</span></p>` : ''}
+      ${res.coronaPerduda && !res.fi ? html`<p class="trg-note is-ko"><span>${t('trivial.crownLost', { cat: catName(v.cat) })}</span></p>` : ''}
+      ${res.fi === 'perduda' ? html`<p class="trg-note is-ko"><span>${t('trivial.lastLife')}</span></p>` : ''}
       ${res.repteObert ? html`<p class="trg-note is-ok">${icon('crown', 16, 2)}<span>${t('trivial.crownOpen', { cat: catName(v.cat) })}</span></p>` : ''}</div>`);
     dockSet(html`<button class="trg-btn" data-act="next">${res.fi ? t('trivial.result') : t('trivial.next')}</button>`);
+    el.querySelectorAll('#trTools button').forEach((b) => { b.disabled = true; });
     fb.scrollIntoView?.({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
     const sc = el.querySelector('#trScore'); if (sc) { sc.textContent = String(st.punts); sc.classList.remove('bump'); void sc.offsetWidth; sc.classList.add('bump'); }
     const lv = el.querySelector('#trLives'); if (lv) lv.outerHTML = livesView().s;
@@ -151,8 +157,7 @@ export default function view({ el }) {
 
   const renderEnd = () => {
     phase = 'fi';
-    let record = false;
-    if (!closed) { closed = true; record = T.tancaPartida(st, estats); }
+    if (!closed) { closed = true; record = T.tancaPartida(st, estats); }     // (normalmente ya se cerró al responder)
     const win = st.fi === 'guanyada';
     screen(backTop(), html`<div class="trg-endhead ${win ? 'win' : ''}"><span class="trg-crown-ic big">${icon(win ? 'trophy' : 'glass', 44, 1.3)}</span>
         <h1 class="trg-title">${win ? t('trivial.win') : t('trivial.lose')}</h1><p class="trg-sub">${win ? t('trivial.winText') : t('trivial.loseText')}</p></div>
@@ -165,15 +170,19 @@ export default function view({ el }) {
 
   // ---------- flujo ----------
   const stopTimer = () => { clearInterval(timer); timer = null; };
+  const remaining = () => Math.max(0, (endAt - performance.now()) / 1000);
   const paintTime = (left) => {
     const bar = el.querySelector('#trBar'), sec = el.querySelector('#trSec');
     if (bar) { bar.style.transform = `scaleX(${Math.max(0, Math.min(1, left / T.TEMPS))})`; bar.parentElement.classList.toggle('low', left <= 5); }
     if (sec) { sec.textContent = String(Math.max(0, Math.ceil(left))); sec.classList.toggle('low', left <= 5); }
   };
-  const startTimer = () => {
-    stopTimer(); endAt = performance.now() + T.TEMPS * 1000; lastTick = 99; paintTime(T.TEMPS);
+  // `secs` permite retomar lo que quedaba (al cancelar «Surt» o al continuar), en vez de regalar 20 s cada vez
+  const startTimer = (secs = T.TEMPS) => {
+    stopTimer(); lastTick = 99; pausa = null; secs = Math.max(1, Math.min(T.TEMPS, secs)); paintTime(secs);
+    if (document.hidden) { pausa = secs; return; }                      // la pregunta salió con la app en segundo plano: el reloj espera
+    endAt = performance.now() + secs * 1000;
     timer = setInterval(() => {
-      const left = (endAt - performance.now()) / 1000;
+      const left = remaining();
       paintTime(left);
       const whole = Math.ceil(left);
       if (left <= 5 && whole !== lastTick && left > 0) { lastTick = whole; sfx.tick(); }
@@ -182,6 +191,7 @@ export default function view({ el }) {
   };
 
   const askQuestion = (key, corona) => {
+    st.girada = null;
     cur = T.pregunta(st, estats, key, corona);
     T.guardar(st); T.desarEstats(estats);
     renderQ();
@@ -189,11 +199,12 @@ export default function view({ el }) {
 
   const answer = (i) => {
     if (phase !== 'pregunta') return;
-    stopTimer();
-    const left = Math.max(0, (endAt - performance.now()) / 1000);
+    stopTimer(); pausa = null;
+    const left = remaining();
     res = T.respon(st, i, left);
-    T.guardar(st);
     phase = 'resposta';
+    // la partida se cierra (estadísticas y borrado del guardado) en el momento de acabar: si se cierra la app antes de «Veure el resultat» no se pierde
+    if (res.fi && !closed) { closed = true; record = T.tancaPartida(st, estats); } else if (!res.fi) T.guardar(st);
     const o = el.querySelector('#trOpts'); if (o) o.outerHTML = optsView(cur, { picked: i, done: true }).s;
     if (res.ok) { sfx.good(); buzz(25); if (res.coronaGuanyada) { confetti(70); later(() => sfx.fanfare(), 350); } } else { sfx.bad(); buzz([60, 40, 60]); }
     showFb();
@@ -202,8 +213,9 @@ export default function view({ el }) {
   const spin = () => {
     if (spinning || phase !== 'ruleta') return;
     const key = T.triaCategoria(st); const k = CATS.findIndex((c) => c.key === key);
-    const wheel = el.querySelector('#trWheel'); const box = el.querySelector('#trWheelBox'); const btn = el.querySelector('[data-act="spin"]');
+    const wheel = el.querySelector('#trWheel'); const box = el.querySelector('#trWheelBox'); const btn = el.querySelector('#trDock [data-act="spin"]');
     if (!wheel) return;
+    st.girada = key; T.guardar(st);                                      // la categoría se decide al girar: si se sale a medias, no se puede «volver a tirar»
     spinning = true; if (btn) btn.disabled = true; box?.classList.add('spin');
     const jitter = (Math.random() - 0.5) * 36;
     const target = (((360 - (k * 60 + 30) + jitter) % 360) + 360) % 360;
@@ -222,38 +234,64 @@ export default function view({ el }) {
     }, dur + 250);
   };
 
-  const nueva = () => { st = T.novaPartida(); closed = false; res = null; cur = null; angle = 0; T.guardar(st); renderWheel(); };
-  const continuar = () => { if (st.actual) { cur = T.visio(st); renderQ(); } else renderWheel(); };
+  const nueva = async () => {
+    if (st && !st.fi) {                                                  // hay una partida guardada: no se tira sin avisar
+      const ok = await confirmBox(t('trivial.newTitle'), t('trivial.newText'), t('trivial.newOk'), t('common.cancel'), true);
+      if (!ok || !alive) return;
+    }
+    st = T.novaPartida(); closed = false; record = false; res = null; cur = null; angle = 0; T.guardar(st); renderWheel();
+  };
+  const continuar = () => {
+    if (st.actual) { cur = T.visio(st); renderQ(st.actual.resta ?? T.TEMPS); }
+    else if (st.girada) askQuestion(st.girada, false);
+    else renderWheel();
+  };
   const salir = async () => {
     if (phase === 'inici' || phase === 'fi') { go('/play'); return; }
-    if (spinning) return;
     if (st.fi) { renderEnd(); return; }
+    // si se sale girando, la ruleta se para: la categoría ya está decidida y se guarda (st.girada)
+    const girada = spinning ? st.girada : null;
+    if (spinning) { clearInterval(spinTimer); pending.forEach(clearTimeout); pending.clear(); spinning = false; }
+    const left = timer ? remaining() : (pausa ?? T.TEMPS);
     stopTimer();
     const ok = await confirmBox(t('trivial.quitTitle'), t('trivial.quitText'), t('trivial.quitOk'), t('trivial.quitNo'));
     if (!alive) return;
-    if (ok) { T.guardar(st); st = T.carregar(); renderStart(); }
-    else if (phase === 'pregunta') startTimer();       // vuelve el reloj (con el tiempo entero: no se castiga la duda)
+    if (ok) { if (st.actual) st.actual.resta = left; T.guardar(st); st = T.carregar(); renderStart(); }
+    else if (phase === 'pregunta') startTimer(left);                     // vuelve el reloj con lo que quedaba
+    else if (girada) askQuestion(girada, false);
   };
 
+  // si algo falla (un guardado raro, etc.) no se deja la pantalla muerta: se vuelve al inicio con lo último bueno guardado
+  const fallo = (err) => { console.error(err); try { toast(t('err.generic'), 'err'); } catch { /* nada */ } st = T.carregar(); stopTimer(); if (alive) renderStart(); };
+  const seguro = (fn) => (e, b) => { try { const r = fn(e, b); if (r && r.catch) r.catch(fallo); } catch (err) { fallo(err); } };
+  // los botones de abajo comparten sitio (Següent / Gira / Accepta…): un doble toque no se salta la pantalla siguiente
+  const DOBLE = ['next', 'spin', 'crown', 'new', 'resume'];
+
   const offs = [
-    on(el, 'click', '[data-act]', (e, b) => {
+    on(el, 'click', '[data-act]', seguro((e, b) => {
       const a = b.dataset.act;
-      if (a === 'new') nueva();
+      if (DOBLE.includes(a) && performance.now() - dockAt < 300) return;
+      if (a === 'new') return nueva();
       else if (a === 'resume') continuar();
       else if (a === 'spin') spin();
       else if (a === 'crown') askQuestion(T.repteCorona(st), true);
       else if (a === 'next') { if (st.fi) renderEnd(); else renderWheel(); }
-      else if (a === 'quit') salir();
-      else if (a === 'half') { if (phase === 'pregunta' && T.meitat(st)) { cur = T.visio(st); T.guardar(st); sfx.pop(); const o = el.querySelector('#trOpts'); if (o) o.outerHTML = optsView(cur).s; dockSet(toolsView()); } }
+      else if (a === 'quit') return salir();
+      else if (a === 'half') { if (phase === 'pregunta' && T.meitat(st)) { cur = T.visio(st); T.guardar(st); sfx.pop(); const o = el.querySelector('#trOpts'); if (o) o.outerHTML = optsView(cur).s; const tl = el.querySelector('#trTools'); if (tl) tl.outerHTML = toolsView().s; } }
       else if (a === 'swap') { if (phase === 'pregunta') { const q = T.canvia(st, estats); if (q) { cur = q; T.guardar(st); T.desarEstats(estats); sfx.pop(); renderQ(); } } }
-    }),
-    on(el, 'click', '[data-choice]', (e, b) => answer(Number(b.dataset.choice))),
+    })),
+    on(el, 'click', '[data-choice]', seguro((e, b) => answer(Number(b.dataset.choice)))),
   ];
-  // la pestaña oculta no debe correr el reloj en silencio: al volver se retoma con el tiempo que quedaba
-  let hiddenAt = 0;
-  const vis = () => { if (document.hidden) hiddenAt = performance.now(); else if (hiddenAt && phase === 'pregunta') { endAt += performance.now() - hiddenAt; hiddenAt = 0; } };
+  // la app en segundo plano no debe gastar el tiempo de la pregunta (Chrome sigue ejecutando temporizadores): se congela y se retoma
+  const vis = () => {
+    if (document.hidden) { if (phase === 'pregunta' && timer) { pausa = remaining(); stopTimer(); } }
+    else if (pausa != null && phase === 'pregunta') { const q = pausa; pausa = null; startTimer(q); }
+  };
+  // y si se cierra la app a media pregunta, se guarda lo que quedaba
+  const guardaResta = () => { if (phase === 'pregunta' && st && st.actual) { st.actual.resta = timer ? remaining() : (pausa ?? T.TEMPS); T.guardar(st); } };
   document.addEventListener('visibilitychange', vis);
+  window.addEventListener('pagehide', guardaResta);
 
   renderStart();
-  return () => { alive = false; stopTimer(); clearInterval(spinTimer); pending.forEach(clearTimeout); offs.forEach((f) => f()); document.removeEventListener('visibilitychange', vis); document.documentElement.classList.remove('trg-on'); };
+  return () => { alive = false; stopTimer(); clearInterval(spinTimer); pending.forEach(clearTimeout); offs.forEach((f) => f()); document.removeEventListener('visibilitychange', vis); window.removeEventListener('pagehide', guardaResta); document.documentElement.classList.remove('trg-on'); };
 }

@@ -24,12 +24,13 @@ export default function view({ el, params }) {
     const base = [s?.status, s?.qIndex, s?.cur?.open, s?.reveal?.index, me?.score, me?.lastOk, me?.teamId, myAns?.choice, timeUp, s?.teamMode, rated, stars, res?.rank];
     if (!s || s.status === 'lobby') base.push(players.length, teams.map((x) => x.id + x.name).join());
     if (s?.status === 'reveal' || s?.status === 'ended') base.push(players.map((p) => p.id + ':' + p.score).join(), teams.length);
-    if (s?.status === 'question') base.push(s?.answeredCount);
     return JSON.stringify(base);
   }
 
   function render(force = false) {
     if (!s) { setHtml(el, html`<div class="game">${skeleton('rows')}</div>`); return; }
+    // el contador de «han respondido» se cambia a mano: rehacer la pantalla entera sustituía los botones bajo el dedo (en iOS se perdía el toque)
+    const ac = el.querySelector('[data-answered]'); if (ac && s.answeredCount != null) ac.textContent = ' · ' + t('game.answered', { a: s.answeredCount, n: players.length });
     const sg = sig(); if (!force && sg === lastSig) return; lastSig = sg;
     let body;
     if (s.status === 'lobby') body = lobby();
@@ -55,7 +56,7 @@ export default function view({ el, params }) {
     return html`<div class="row between mb"><span class="pill gold">${t('game.question', { i: c.index + 1, n: s.total })}</span>${c.open && !timeUp ? ring(left, c.durationSec) : html`<span class="pill warn">${answered ? t('game.sent') : t('game.timeUp')}</span>`}</div>
       <div class="card qbox">${c.ref ? html`<span class="pill cat">${c.ref}</span>` : ''}<h2>${c.prompt}</h2>${mediaBlock(c)}</div>
       ${optionsView(c, { picked: myAns ? myAns.choice : -1, interactive: c.open && !timeUp && !answered, dim: answered || timeUp })}
-      ${answered ? html`<p class="center muted mt">✓ ${t('game.waitReveal')}${s.answeredCount != null ? ' · ' + t('game.answered', { a: s.answeredCount, n: players.length }) : ''}</p>` : ''}`;
+      ${answered ? html`<p class="center muted mt">✓ ${t('game.waitReveal')}<span data-answered>${s.answeredCount != null ? ' · ' + t('game.answered', { a: s.answeredCount, n: players.length }) : ''}</span></p>` : ''}`;
   };
 
   const reveal = () => {

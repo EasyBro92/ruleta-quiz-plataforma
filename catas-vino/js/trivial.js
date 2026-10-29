@@ -27,8 +27,15 @@ export function llegirEstats() { const s = llegeix(K_STATS); return s && typeof 
 export function desarEstats(s) { escriu(K_STATS, s); }
 export function carregar() {
   const g = llegeix(K_GAME);
-  if (!g || g.v !== VERSIO || g.fi || !Array.isArray(g.corones) || !g.progres) return null;
-  if (g.actual) { const c = CATS.find((x) => x.key === g.actual.cat); if (!c || !c.qs[g.actual.idx]) g.actual = null; }
+  // un guardado a medias o de otra versión no debe dejar la pantalla muerta: si algo no cuadra, se descarta
+  const valida = g && g.v === VERSIO && !g.fi && Number.isFinite(g.vides) && g.vides > 0 && Number.isFinite(g.punts)
+    && Array.isArray(g.corones) && g.comodins && g.progres && KEYS.every((k) => Number.isFinite(g.progres[k]) && Array.isArray(g.usades?.[k]));
+  if (!valida) return null;
+  if (g.actual) {
+    const c = CATS.find((x) => x.key === g.actual.cat);
+    if (!c || !c.qs[g.actual.idx] || !Array.isArray(g.actual.ordre) || g.actual.ordre.length !== 4 || !Array.isArray(g.actual.ocults)) g.actual = null;
+  }
+  if (g.girada && !KEYS.includes(g.girada)) g.girada = null;
   return g;
 }
 export function guardar(st) { escriu(K_GAME, st); }
@@ -39,7 +46,7 @@ export function novaPartida() {
   return {
     v: VERSIO, vides: VIDES_INICIALS, punts: 0, ratxa: 0, millorRatxa: 0, encerts: 0, errors: 0, preguntes: 0,
     corones: [], progres: Object.fromEntries(KEYS.map((k) => [k, 0])), usades: Object.fromEntries(KEYS.map((k) => [k, []])),
-    comodins: { meitat: 1, canvia: 1 }, actual: null, fi: null,
+    comodins: { meitat: 1, canvia: 1 }, actual: null, girada: null, fi: null,
   };
 }
 
@@ -59,9 +66,11 @@ function escullPregunta(st, estats, key, corona, rnd) {
   if (!lliure.length) { st.usades[key] = []; lliure = cat.qs.map((q, i) => i); }   // (no pasa en una partida normal) por si acaso, se vuelve a empezar
   let pool = lliure.filter((i) => !vistes.has(i));
   if (!pool.length) { estats.vistes[key] = []; pool = lliure; }          // las has visto todas: se empieza otra vuelta
-  const volNivell = corona || rnd() < 0.3 ? 2 : 1;                      // la corona siempre es difícil; el resto, sobre todo fáciles
-  const delNivell = pool.filter((i) => cat.qs[i][0] === volNivell);
-  const triades = delNivell.length ? delNivell : pool;
+  const volNivell = corona || rnd() < 0.15 ? 2 : 1;                     // la corona siempre es difícil; el resto, casi siempre fáciles
+  const delNivell = (ids) => ids.filter((i) => cat.qs[i][0] === volNivell);
+  let triades = delNivell(pool);
+  if (!triades.length && corona) triades = delNivell(lliure);           // la corona es difícil aunque ya la hayas visto en otra partida
+  if (!triades.length) triades = pool;
   const idx = triades[Math.floor(rnd() * triades.length)];
   st.usades[key].push(idx);
   (estats.vistes[key] = estats.vistes[key] || []).push(idx);
@@ -112,7 +121,7 @@ export function respon(st, triada, tempsRestant = 0) {
     res.punts = 10 + Math.min(st.ratxa - 1, 5) * 2 + Math.round(Math.max(0, tempsRestant) / 4);
     if (v.corona) {
       st.corones.push(v.cat); st.progres[v.cat] = ENCERTS_CORONA; res.coronaGuanyada = true; res.punts += 50;
-      if (st.vides < VIDES_MAX) { st.vides++; res.vidaExtra = true; }
+      if (st.vides < VIDES_MAX && st.corones.length < KEYS.length) { st.vides++; res.vidaExtra = true; }   // con la última corona no: la partida ya está ganada
     } else {
       st.progres[v.cat] = Math.min(ENCERTS_CORONA, st.progres[v.cat] + 1);
       res.repteObert = st.progres[v.cat] >= ENCERTS_CORONA;
@@ -130,7 +139,7 @@ export function respon(st, triada, tempsRestant = 0) {
 
 /** Cierra la partida: actualiza las estadísticas y borra el guardado. Devuelve si es récord. */
 export function tancaPartida(st, estats) {
-  const record = st.punts > estats.millor;
+  const record = estats.partides > 0 && st.punts > estats.millor;      // la primera partida no «bate» nada
   estats.partides++; estats.encerts += st.encerts; estats.preguntes += st.preguntes;
   if (st.fi === 'guanyada') estats.victories++;
   estats.millor = Math.max(estats.millor, st.punts); estats.millorRatxa = Math.max(estats.millorRatxa, st.millorRatxa);
