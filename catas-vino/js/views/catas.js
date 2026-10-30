@@ -8,6 +8,7 @@ import { countdown } from '../countdown.js';
 import { seatsLeft, isFull, isPast } from '../api.js';
 import { icon, portraitPlaceholder } from '../icons.js';
 import { contactBlock } from '../contact.js';
+import { postsGuardados, cargarPosts } from '../instagram.js';
 
 export const cataCard = (c) => {
   const left = seatsLeft(c), pct = c.capacity ? Math.min(100, Math.round(((c.seatsTaken || 0) / c.capacity) * 100)) : 0;
@@ -66,15 +67,25 @@ function carSync(root) {
 // si el logo o la foto no cargan (p. ej. sin conexión), se enseña el marcador en vez de una imagen rota
 const brokenImg = new Set();
 
-/** Portada: el logo y tu foto, y debajo la presentación. */
-function cover(next) {
+/** Portada: el logo y tu foto (o tus últimas publicaciones de Instagram), y debajo la presentación. */
+function cover(next, ig = [], igIdx = 0) {
   const b = CONFIG.brand, logo = b.logo && !brokenImg.has('logo'), photo = b.photo && !brokenImg.has('photo');
+  const fotos = ig.filter((p) => !brokenImg.has('ig:' + p.id));
+  const idx = fotos.length ? igIdx % fotos.length : 0;
+  const instagram = b.instagram || 'salut_catarsi';
+  const marco = fotos.length
+    ? html`${fotos.map((p, i) => html`<img class="ig ${i === idx ? 'on' : ''}" src="${p.img}" alt="${p.caption || 'Instagram @' + instagram}" data-brand="ig:${p.id}" loading="${i ? 'lazy' : 'eager'}">`)}
+      <div class="ig-bar">
+        ${fotos.length > 1 ? html`<div class="ig-dots">${fotos.map((p, i) => html`<button type="button" data-ig-go="${i}" aria-label="${i + 1} / ${fotos.length}" aria-current="${i === idx}"></button>`)}</div>` : ''}
+        <a class="ig-link" data-ig-link href="${fotos[idx].url}" target="_blank" rel="noopener" aria-label="Instagram @${instagram}">${icon('insta', 15)}@${instagram}</a>
+      </div>`
+    : photo ? html`<img src="${b.photo}" alt="${b.owner || b.name}" data-brand="photo">` : html`<div class="ph">${portraitPlaceholder()}${b.photo ? '' : html`<span>${t('home.photoPh')}</span>`}</div>`;
   return html`<section class="cover">
     <div class="cover-logo">
       ${logo ? html`<img src="${b.logo}" alt="" data-brand="logo">` : icon('glass', 38, 1.3)}
       <h1 class="${logo ? 'sr-only' : ''}">${b.name}</h1>
     </div>
-    <div class="arch"><div class="frame">${photo ? html`<img src="${b.photo}" alt="${b.owner || b.name}" data-brand="photo">` : html`<div class="ph">${portraitPlaceholder()}${b.photo ? '' : html`<span>${t('home.photoPh')}</span>`}</div>`}</div></div>
+    <div class="arch"><div class="frame">${marco}</div></div>
     ${b.owner ? html`<p class="owner">${b.owner}</p>` : ''}
     <p class="intro">${b.intro || t('home.intro')}</p>
     ${next ? html`<a class="next-card" href="#/cata/${next.id}">
@@ -92,6 +103,22 @@ const keyOf = (ms) => isoDay(ms);
 export default function view({ el }) {
   let catas = null, news = null, month = null, selDay = '', carKey = '', live = null, trust = null, reviews = [], gallery = [];
   const lang = () => S.lang || 'ca';
+
+  // fotos de Instagram de la portada: rotan solas (sin rehacer la portada) y se renuevan cuando llega el índice
+  let ig = postsGuardados(), igIdx = 0, igTimer = 0, vivo = true;
+  const igFotos = () => ig.filter((p) => !brokenImg.has('ig:' + p.id));
+  const igMostrar = (i) => {
+    const f = igFotos(); if (!f.length) return;
+    igIdx = ((i % f.length) + f.length) % f.length;
+    el.querySelectorAll('img.ig').forEach((im, k) => im.classList.toggle('on', k === igIdx));
+    el.querySelectorAll('[data-ig-go]').forEach((d, k) => d.setAttribute('aria-current', String(k === igIdx)));
+    const a = el.querySelector('[data-ig-link]'); if (a) a.href = f[igIdx].url;
+  };
+  const igArrancar = () => {
+    const debe = igFotos().length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!debe) { clearInterval(igTimer); igTimer = 0; return; }
+    if (!igTimer) igTimer = setInterval(() => { if (!document.hidden) igMostrar(igIdx + 1); }, 5500);
+  };
 
   const upcoming = () => (catas || []).filter((c) => !isPast(c) || c.startsAt > Date.now() - 3600000).sort((a, b) => a.startsAt - b.startsAt);
 
@@ -155,7 +182,7 @@ export default function view({ el }) {
     carKey = selDay + '|' + (month ? month.y + '-' + month.m : '');
     setHtml(el, html`
       <div id="liveSlot">${liveBanner()}</div>
-      ${cover(catas && list[0] && !isPast(list[0]) ? list[0] : null)}
+      ${cover(catas && list[0] && !isPast(list[0]) ? list[0] : null, ig, igIdx)}
       <section class="sect" id="calendario">
         <h2>${t('home.upcoming')}</h2>
         ${month ? calendar(list) : skeleton('calendar')}
@@ -167,6 +194,7 @@ export default function view({ el }) {
       <section class="sect"><div class="private-cta"><h3>${t('home.privateTitle')}</h3><p>${t('home.privateText')}</p><div class="cta-row"><a class="btn primary" href="#/private">${t('home.private')}</a></div><div class="cta-contact">${contactBlock()}</div></div></section>
     `);
     el.querySelectorAll('img[data-brand]').forEach((img) => img.addEventListener('error', () => { brokenImg.add(img.dataset.brand); render(); }, { once: true }));
+    igArrancar();
     const track = el.querySelector('[data-car-track]');
     if (track) {
       if (keepLeft) track.scrollLeft = keepLeft;
@@ -185,6 +213,8 @@ export default function view({ el }) {
   const click = async (e) => {
     const tgt = e.target;
     if (tgt.closest('[data-act="to-calendar"]')) { const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; el.querySelector('#calendario')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); return; }
+    const ib = tgt.closest('[data-ig-go]');
+    if (ib) { igMostrar(Number(ib.dataset.igGo)); clearInterval(igTimer); igTimer = 0; igArrancar(); return; }   // al elegir una a mano, el reloj empieza de nuevo
     const go = tgt.closest('[data-car-go]'), dot = tgt.closest('[data-car-dot]');
     if (go || dot) {
       const track = el.querySelector('[data-car-track]'); if (!track) return;
@@ -201,5 +231,11 @@ export default function view({ el }) {
   };
   el.addEventListener('click', click);
   render();
-  return () => { u1(); u2(); u4(); u5(); u6(); u7(); el.removeEventListener('click', click); };
+  cargarPosts().then((l) => {
+    if (!vivo || !l) return;
+    const clave = (a) => a.map((p) => p.id + p.img + p.url).join('|');
+    if (clave(l) === clave(ig)) return;
+    ig = l; igIdx = 0; render();
+  });
+  return () => { vivo = false; clearInterval(igTimer); u1(); u2(); u4(); u5(); u6(); u7(); el.removeEventListener('click', click); };
 }

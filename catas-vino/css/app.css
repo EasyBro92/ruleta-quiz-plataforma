@@ -635,3 +635,16 @@ html.trg-on, html.trg-on body { overflow: hidden; overscroll-behavior: none; }
 .trg-crown-ic svg { width: 44px; height: 44px; } .trg-crown-ic.big svg { width: 52px; height: 52px; }
 .trg-btn svg { width: 20px; height: 20px; flex: none; }
 #trWheel .ico { transform-box: fill-box; transform-origin: 50% 50%; }
+
+/* Portada con las últimas publicaciones de Instagram: se funden una en otra dentro del arco */
+.arch img.ig { position: absolute; inset: 0; opacity: 0; transition: opacity .9s ease; }
+.arch img.ig.on { opacity: 1; }
+.ig-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 34px 0 12px; background: linear-gradient(180deg, transparent, rgba(43, 17, 24, .55)); }
+.ig-dots { display: flex; gap: 2px; }
+.ig-dots button { appearance: none; border: 0; background: none; padding: 11px 3px; cursor: pointer; }
+.ig-dots button::before { content: ""; display: block; width: 18px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .5); transition: background .3s; }
+.ig-dots button[aria-current="true"]::before { background: #fff; }
+.ig-link { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 14px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: var(--wine-deep); font-size: .8rem; font-weight: 600; text-decoration: none; }
+.ig-link .ic { width: 15px; height: 15px; }
+.ig-link:focus-visible, .ig-dots button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .arch img.ig, .ig-dots button::before { transition: none; } }

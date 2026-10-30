@@ -1,0 +1,41 @@
+# Catarsi · trae las últimas fotos de Instagram a la portada de la app (una vez al día, o a mano desde «Actions»).
+# Necesita el secreto INSTAGRAM_TOKEN (Settings → Secrets and variables → Actions). Sin él no hace nada.
+name: Catarsi · fotos de Instagram
+
+on:
+  schedule:
+    - cron: '17 6 * * *'     # cada día a las 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: catarsi-instagram
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Leer Instagram y bajar las fotos
+        env:
+          INSTAGRAM_TOKEN: ${{ secrets.INSTAGRAM_TOKEN }}
+        run: node .github/scripts/catarsi-instagram.mjs
+      - name: Publicar si hay algo nuevo
+        run: |
+          git config user.name "catarsi-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add catas-vino/data/instagram.json catas-vino/img/instagram
+          if git diff --cached --quiet; then
+            echo "Nada nuevo."
+          else
+            git commit -m "Catarsi: fotos de Instagram actualizadas"
+            git pull --rebase -q origin "${GITHUB_REF_NAME}"
+            git push
+          fi
