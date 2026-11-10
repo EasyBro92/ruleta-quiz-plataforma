@@ -659,5 +659,16 @@ export default {
   "trivial.lastLife": "Era tu última copa.",
   "trivial.newTitle": "¿Empezar una partida nueva?",
   "trivial.newText": "Perderás la partida que tienes guardada.",
-  "trivial.newOk": "Sí, partida nueva"
+  "trivial.newOk": "Sí, partida nueva",
+  "promo.badge": "Nuevo evento",
+  "promo.ask": "Reserva tu plaza",
+  "promo.book": "Reservar plaza",
+  "promo.later": "Ahora no",
+  "promo.close": "Cerrar",
+  "promo.prev": "Anterior",
+  "promo.next": "Siguiente",
+  "a.cata.f.photo2": "Segunda imagen (opcional)",
+  "a.cata.photo2Hint": "Por ejemplo, el menú o el programa. Se desliza en el cartel del evento.",
+  "a.cata.f.promo": "Promocionarla al abrir la app",
+  "a.cata.promoHint": "Sale un cartel a todos al entrar, hasta que empieza. Hace falta la foto."
 };

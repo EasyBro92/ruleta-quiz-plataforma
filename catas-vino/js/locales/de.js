@@ -340,5 +340,12 @@ export default {
   "trivial.lastLife": "Das war dein letztes Glas.",
   "trivial.newTitle": "Neues Spiel starten?",
   "trivial.newText": "Dein gespeichertes Spiel geht verloren.",
-  "trivial.newOk": "Ja, neues Spiel"
+  "trivial.newOk": "Ja, neues Spiel",
+  "promo.badge": "Neue Veranstaltung",
+  "promo.ask": "Reserviere deinen Platz",
+  "promo.book": "Platz reservieren",
+  "promo.later": "Jetzt nicht",
+  "promo.close": "Schließen",
+  "promo.prev": "Zurück",
+  "promo.next": "Weiter"
 };

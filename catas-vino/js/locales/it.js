@@ -340,5 +340,12 @@ export default {
   "trivial.lastLife": "Era il tuo ultimo calice.",
   "trivial.newTitle": "Iniziare una nuova partita?",
   "trivial.newText": "Perderai la partita salvata.",
-  "trivial.newOk": "Sì, nuova partita"
+  "trivial.newOk": "Sì, nuova partita",
+  "promo.badge": "Nuovo evento",
+  "promo.ask": "Prenota il tuo posto",
+  "promo.book": "Prenota un posto",
+  "promo.later": "Non ora",
+  "promo.close": "Chiudi",
+  "promo.prev": "Precedente",
+  "promo.next": "Successivo"
 };

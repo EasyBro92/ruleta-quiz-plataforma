@@ -340,5 +340,12 @@ export default {
   "trivial.lastLife": "C'était ta dernière coupe.",
   "trivial.newTitle": "Commencer une nouvelle partie ?",
   "trivial.newText": "Tu perdras la partie sauvegardée.",
-  "trivial.newOk": "Oui, nouvelle partie"
+  "trivial.newOk": "Oui, nouvelle partie",
+  "promo.badge": "Nouvel événement",
+  "promo.ask": "Réserve ta place",
+  "promo.book": "Réserver une place",
+  "promo.later": "Pas maintenant",
+  "promo.close": "Fermer",
+  "promo.prev": "Précédent",
+  "promo.next": "Suivant"
 };

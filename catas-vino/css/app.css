@@ -648,3 +648,50 @@ html.trg-on, html.trg-on body { overflow: hidden; overscroll-behavior: none; }
 .ig-link .ic { width: 15px; height: 15px; }
 .ig-link:focus-visible, .ig-dots button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .arch img.ig, .ig-dots button::before { transition: none; } }
+
+/* Cartells d'esdeveniments: targeta de la portada i finestra emergent. Van en granat i or, com els cartells mateixos. */
+.promo-list { display: grid; gap: 10px; width: 100%; max-width: 520px; margin: -6px auto 16px; }
+.promo-bg { outline: none; }
+.promo-card { display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 12px 10px 10px; text-align: left; font: inherit; color: #f6e9e4; cursor: pointer; border: 1px solid var(--gold-fill); border-radius: 16px; background: linear-gradient(135deg, #5a0508, #3b0204); box-shadow: 0 14px 30px -18px rgba(59, 2, 4, .75); }
+.promo-card:active { transform: scale(.99); }
+.promo-card:focus-visible { outline: 2px solid var(--gold-fill); outline-offset: 3px; }
+.promo-card img { flex: none; width: 54px; height: 76px; object-fit: cover; object-position: top; border-radius: 8px; border: 1px solid rgba(201, 162, 76, .55); }
+.pc-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pc-kicker { color: var(--gold-fill); font-size: .8rem; font-weight: 600; }
+.promo-card b { font-family: var(--display); font-size: 1.06rem; line-height: 1.2; font-weight: 600; }
+.pc-when { font-size: .85rem; color: #e8d3cc; }
+.pc-go { flex: none; display: grid; place-items: center; color: var(--gold-fill); }
+
+.promo-bg { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: calc(var(--safe-t) + 18px) 14px calc(var(--safe-b) + 14px); background: rgba(28, 5, 8, .8); -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px); animation: promoIn .3s ease both; }
+.promo-bg.out { animation: promoOut .22s ease both; }
+/* el ancho sale del alto que queda: el cartell (proporción 0,69) cabe entero y a la vista queden también los botones */
+.promo { --w: min(100%, 400px, calc((100vh - 230px) * .69)); position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; width: var(--w); animation: promoCard .45s cubic-bezier(.2, .8, .2, 1) both; }
+@supports (height: 100dvh) { .promo { --w: min(100%, 400px, calc((100dvh - 230px) * .69)); } }
+.promo-badge { position: absolute; top: -17px; left: 50%; transform: translateX(-50%); z-index: 2; display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px; border-radius: 999px; background: var(--gold-fill); color: #2b0708; font-family: var(--display); font-weight: 600; font-size: .95rem; white-space: nowrap; box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .55); }
+.promo-badge .ic { width: 14px; height: 14px; }
+.promo-frame { position: relative; width: 100%; overflow: hidden; border: 1px solid var(--gold-fill); border-radius: 18px; background: #4a0405; box-shadow: 0 30px 70px -24px rgba(0, 0, 0, .7); }
+.promo-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; outline: none; }
+.promo-track::-webkit-scrollbar { display: none; }
+.promo-slide { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; aspect-ratio: 1000 / 1448; }
+.promo-slide img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.promo-x, .promo-nav { position: absolute; display: grid; place-items: center; border: 0; border-radius: 50%; padding: 0; color: #fff; background: rgba(20, 3, 5, .55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); cursor: pointer; }
+.promo-x { top: 8px; right: 8px; width: 40px; height: 40px; }
+.promo-nav { top: 50%; margin-top: -18px; width: 36px; height: 36px; }
+.promo-nav.prev { left: 6px; } .promo-nav.next { right: 6px; }
+.promo-nav.off { display: none; }
+.promo-x:focus-visible, .promo-nav:focus-visible, .promo-dots button:focus-visible, .promo-later:focus-visible { outline: 2px solid var(--gold-fill); outline-offset: 2px; }
+.promo-dots { display: flex; gap: 2px; margin-top: -2px; }
+.promo-dots button { appearance: none; border: 0; background: none; padding: 10px 4px; cursor: pointer; }
+.promo-dots button::before { content: ""; display: block; width: 22px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .4); transition: background .3s; }
+.promo-dots button[aria-current="true"]::before { background: var(--gold-fill); }
+.promo-actions { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.promo-actions > .btn.primary { background: var(--gold-fill); border-color: var(--gold-fill); color: #2b0708; }
+.promo-actions > .btn.primary:hover { background: #d6b25f; border-color: #d6b25f; }
+.promo-ask { text-align: center; }
+.promo-ask p { margin: 0 0 6px; font-family: var(--display); font-size: 1.05rem; color: #f6e9e4; }
+.promo-ask .row { justify-content: center; }
+.promo-later { appearance: none; border: 0; background: none; min-height: 36px; padding: 6px 14px; color: #e8d3cc; font: inherit; font-size: .9rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+@keyframes promoIn { from { opacity: 0; } }
+@keyframes promoOut { to { opacity: 0; } }
+@keyframes promoCard { from { opacity: 0; transform: translateY(28px) scale(.94); } }
+@media (prefers-reduced-motion: reduce) { .promo-bg, .promo-bg.out, .promo { animation: none; } .promo-dots button::before { transition: none; } }

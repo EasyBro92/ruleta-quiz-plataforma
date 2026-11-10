@@ -659,5 +659,16 @@ export default {
   "trivial.lastLife": "Era la teva última copa.",
   "trivial.newTitle": "Començar una partida nova?",
   "trivial.newText": "Perdràs la partida que tens guardada.",
-  "trivial.newOk": "Sí, nova partida"
+  "trivial.newOk": "Sí, nova partida",
+  "promo.badge": "Nou esdeveniment",
+  "promo.ask": "Reserva la teva plaça",
+  "promo.book": "Reserva plaça",
+  "promo.later": "Ara no",
+  "promo.close": "Tanca",
+  "promo.prev": "Anterior",
+  "promo.next": "Següent",
+  "a.cata.f.photo2": "Segona imatge (opcional)",
+  "a.cata.photo2Hint": "Per exemple, el menú o el programa. Es llisca al cartell de l'esdeveniment.",
+  "a.cata.f.promo": "Promociona-la en obrir l'app",
+  "a.cata.promoHint": "Surt un cartell a tothom en entrar, fins que comença. Cal la foto."
 };

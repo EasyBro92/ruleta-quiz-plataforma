@@ -9,6 +9,8 @@ import { seatsLeft, isFull, isPast } from '../api.js';
 import { icon, portraitPlaceholder } from '../icons.js';
 import { contactBlock } from '../contact.js';
 import { postsGuardados, cargarPosts } from '../instagram.js';
+import { cargarPromos, promosDeCatas, actives, perAutomatic, marcarVist } from '../promos.js';
+import { promoCard, obrirPromo } from '../promo-ui.js';
 
 export const cataCard = (c) => {
   const left = seatsLeft(c), pct = c.capacity ? Math.min(100, Math.round(((c.seatsTaken || 0) / c.capacity) * 100)) : 0;
@@ -68,7 +70,7 @@ function carSync(root) {
 const brokenImg = new Set();
 
 /** Portada: el logo y tu foto (o tus últimas publicaciones de Instagram), y debajo la presentación. */
-function cover(next, ig = [], igIdx = 0) {
+function cover(next, ig = [], igIdx = 0, promos = []) {
   const b = CONFIG.brand, logo = b.logo && !brokenImg.has('logo'), photo = b.photo && !brokenImg.has('photo');
   const fotos = ig.filter((p) => !brokenImg.has('ig:' + p.id));
   const idx = fotos.length ? igIdx % fotos.length : 0;
@@ -87,6 +89,7 @@ function cover(next, ig = [], igIdx = 0) {
     </div>
     <div class="arch"><div class="frame">${marco}</div></div>
     ${b.owner ? html`<p class="owner">${b.owner}</p>` : ''}
+    ${promos.length ? html`<div class="promo-list">${promos.map(promoCard)}</div>` : ''}
     <p class="intro">${b.intro || t('home.intro')}</p>
     ${next ? html`<a class="next-card" href="#/cata/${next.id}">
       <div class="date"><b>${dayNum(next.startsAt)}</b><span>${monthShort(next.startsAt)}</span></div>
@@ -113,6 +116,18 @@ export default function view({ el }) {
     el.querySelectorAll('img.ig').forEach((im, k) => im.classList.toggle('on', k === igIdx));
     el.querySelectorAll('[data-ig-go]').forEach((d, k) => d.setAttribute('aria-current', String(k === igIdx)));
     const a = el.querySelector('[data-ig-link]'); if (a) a.href = f[igIdx].url;
+  };
+  // cartells d'esdeveniments: els de data/promos.json i els de les catas marcades. Un d'ells salta sol en obrir l'app
+  let promosFixes = [], promoObert = null, promoTimer = 0;
+  const promos = () => actives([...promosFixes, ...promosDeCatas(catas)]);
+  const obrir = (p) => { promoObert = obrirPromo(p, { onClose: () => { promoObert = null; } }); };
+  const provaPromo = () => {                                   // amb una petita espera, perquè arribin les dues fonts abans de triar
+    clearTimeout(promoTimer);
+    promoTimer = setTimeout(() => {
+      if (!vivo || promoObert || document.querySelector('#modal-root > *')) return;
+      const p = perAutomatic(promos()); if (!p) return;
+      marcarVist(p.id); obrir(p);
+    }, 800);
   };
   const igArrancar = () => {
     const debe = igFotos().length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -182,7 +197,7 @@ export default function view({ el }) {
     carKey = selDay + '|' + (month ? month.y + '-' + month.m : '');
     setHtml(el, html`
       <div id="liveSlot">${liveBanner()}</div>
-      ${cover(catas && list[0] && !isPast(list[0]) ? list[0] : null, ig, igIdx)}
+      ${cover(catas && list[0] && !isPast(list[0]) ? list[0] : null, ig, igIdx, promos())}
       <section class="sect" id="calendario">
         <h2>${t('home.upcoming')}</h2>
         ${month ? calendar(list) : skeleton('calendar')}
@@ -204,7 +219,7 @@ export default function view({ el }) {
     }
   };
 
-  const u1 = db.onList('catas', { where: [['published', '==', true]] }, (r) => { catas = r; render(); });
+  const u1 = db.onList('catas', { where: [['published', '==', true]] }, (r) => { catas = r; render(); provaPromo(); });
   const u4 = db.onList('sessions', { where: [['announce', '==', true]] }, (l) => { const n = pickLive(l); if (n?.id === live?.id && n?.title === live?.title) return; live = n; const slot = el.querySelector('#liveSlot'); if (slot) setHtml(slot, liveBanner()); });
   const u5 = db.onDoc('settings/trust', (d) => { trust = d; paintTrust(); });
   const u6 = db.onList('reviews', { orderBy: [['featuredAt', 'desc']], limit: 6 }, (l) => { reviews = l; paintTrust(); });
@@ -213,6 +228,8 @@ export default function view({ el }) {
   const click = async (e) => {
     const tgt = e.target;
     if (tgt.closest('[data-act="to-calendar"]')) { const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; el.querySelector('#calendario')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' }); return; }
+    const pc = tgt.closest('[data-promo]');
+    if (pc) { const p = promos().find((x) => x.id === pc.dataset.promo); if (p && !promoObert) obrir(p); return; }
     const ib = tgt.closest('[data-ig-go]');
     if (ib) { igMostrar(Number(ib.dataset.igGo)); clearInterval(igTimer); igTimer = 0; igArrancar(); return; }   // al elegir una a mano, el reloj empieza de nuevo
     const go = tgt.closest('[data-car-go]'), dot = tgt.closest('[data-car-dot]');
@@ -231,11 +248,12 @@ export default function view({ el }) {
   };
   el.addEventListener('click', click);
   render();
+  cargarPromos().then((l) => { if (!vivo) return; promosFixes = l; render(); provaPromo(); });
   cargarPosts().then((l) => {
     if (!vivo || !l) return;
     const clave = (a) => a.map((p) => p.id + p.img + p.url).join('|');
     if (clave(l) === clave(ig)) return;
     ig = l; igIdx = 0; render();
   });
-  return () => { vivo = false; clearInterval(igTimer); u1(); u2(); u4(); u5(); u6(); u7(); el.removeEventListener('click', click); };
+  return () => { vivo = false; clearInterval(igTimer); clearTimeout(promoTimer); u1(); u2(); u4(); u5(); u6(); u7(); el.removeEventListener('click', click); };
 }

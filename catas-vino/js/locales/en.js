@@ -340,5 +340,12 @@ export default {
   "trivial.lastLife": "That was your last glass.",
   "trivial.newTitle": "Start a new game?",
   "trivial.newText": "You will lose your saved game.",
-  "trivial.newOk": "Yes, new game"
+  "trivial.newOk": "Yes, new game",
+  "promo.badge": "New event",
+  "promo.ask": "Book your seat",
+  "promo.book": "Book a seat",
+  "promo.later": "Not now",
+  "promo.close": "Close",
+  "promo.prev": "Previous",
+  "promo.next": "Next"
 };

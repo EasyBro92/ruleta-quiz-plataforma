@@ -9,7 +9,7 @@ import { cancelBooking, promoteWaitlist, sendNotice } from '../../api.js';
 
 export default function view({ el, params }) {
   const id = params.id, isNew = id === 'new';
-  let c = isNew ? { title: '', startsAt: Date.now() + 7 * 86400000, durationMin: 120, address: '', price: 25, capacity: 12, cancelHours: CONFIG.cancelHours, showTheme: true, theme: '', wines: '', notes: '', published: true, seatsTaken: 0, waitCount: 0, lat: null, lon: null, image: '' } : null;
+  let c = isNew ? { title: '', startsAt: Date.now() + 7 * 86400000, durationMin: 120, address: '', price: 25, capacity: 12, cancelHours: CONFIG.cancelHours, showTheme: true, theme: '', wines: '', notes: '', published: true, seatsTaken: 0, waitCount: 0, lat: null, lon: null, image: '', image2: '', promo: true } : null;
   let books = [], contacts = {}, busy = false, geoMsg = '';
 
   const render = () => {
@@ -27,6 +27,12 @@ export default function view({ el, params }) {
           ${c.image ? html`<img class="img-q mb" src="${c.image}" alt="">` : ''}
           <div class="row wrap"><label class="btn sm" for="cImg">${c.image ? t('a.cata.photoChange') : t('a.cata.photoPick')}</label><input type="file" id="cImg" accept="image/*" hidden>${c.image ? html`<button type="button" class="btn sm danger" data-act="rmimg">${t('a.cata.photoRm')}</button>` : ''}</div>
           <p class="hint">${t('a.cata.photoHint')}</p></div>
+        <div class="field"><span>${t('a.cata.f.photo2')}</span>
+          ${c.image2 ? html`<img class="img-q mb" src="${c.image2}" alt="">` : ''}
+          <div class="row wrap"><label class="btn sm" for="cImg2">${c.image2 ? t('a.cata.photoChange') : t('a.cata.photoPick')}</label><input type="file" id="cImg2" accept="image/*" hidden>${c.image2 ? html`<button type="button" class="btn sm danger" data-act="rmimg2">${t('a.cata.photoRm')}</button>` : ''}</div>
+          <p class="hint">${t('a.cata.photo2Hint')}</p></div>
+        <label class="check"><input type="checkbox" name="promo" ${c.promo ? 'checked' : ''}><span>${t('a.cata.f.promo')}</span></label>
+        <p class="hint" style="margin-top:-6px">${t('a.cata.promoHint')}</p>
         <label class="field"><span>${t('a.cata.f.title')}</span><input name="title" required value="${c.title}"></label>
         <div class="grid c2"><label class="field"><span>${t('a.cata.f.when')}</span><input type="datetime-local" name="startsAt" required value="${toLocalInput(c.startsAt)}"></label>
           <label class="field"><span>${t('a.cata.f.duration')}</span><input type="number" name="durationMin" min="30" step="15" value="${c.durationMin || 120}"></label></div>
@@ -54,7 +60,7 @@ export default function view({ el, params }) {
 
   const subs = [];
   if (!isNew) {
-    subs.push(db.onDoc(`catas/${id}`, (d) => { if (!d) { toast(t('a.cata.gone'), 'err'); go('/admin'); return; } const keep = c && el.querySelector('#cForm') ? formData(el.querySelector('#cForm')) : null; c = { ...d, lat: c?.latEdited ? c.lat : d.lat, lon: c?.latEdited ? c.lon : d.lon, latEdited: !!c?.latEdited, image: c?.imgEdited ? c.image : (d.image || ''), imgEdited: !!c?.imgEdited }; if (!keep) render(); else renderKeep(keep); }));
+    subs.push(db.onDoc(`catas/${id}`, (d) => { if (!d) { toast(t('a.cata.gone'), 'err'); go('/admin'); return; } const keep = c && el.querySelector('#cForm') ? formData(el.querySelector('#cForm')) : null; c = { ...d, lat: c?.latEdited ? c.lat : d.lat, lon: c?.latEdited ? c.lon : d.lon, latEdited: !!c?.latEdited, image: c?.imgEdited ? c.image : (d.image || ''), image2: c?.imgEdited ? c.image2 : (d.image2 || ''), imgEdited: !!c?.imgEdited }; if (!keep) render(); else renderKeep(keep); }));
     subs.push(db.onList(`catas/${id}/bookings`, {}, (l) => { books = l; render2(); }));
     subs.push(db.onList(`catas/${id}/contacts`, {}, (l) => { contacts = Object.fromEntries(l.map((x) => [x.id, x])); render2(); }));
   }
@@ -63,7 +69,7 @@ export default function view({ el, params }) {
   function renderKeep(keep) { render(); const f = el.querySelector('#cForm'); if (!f) return; for (const [k, v] of Object.entries(keep)) { const inp = f.elements[k]; if (!inp) continue; if (inp.type === 'checkbox') inp.checked = !!v; else if (inp.type !== 'datetime-local' || v) inp.value = v ?? ''; } }
   const read = () => {
     const f = formData(el.querySelector('#cForm'));
-    return { title: f.title, startsAt: fromLocalInput(f.startsAt), durationMin: f.durationMin || 120, address: f.address, lat: c.lat ?? null, lon: c.lon ?? null, price: f.price ?? 0, capacity: f.capacity, cancelHours: f.cancelHours ?? CONFIG.cancelHours, showTheme: f.showTheme, theme: f.theme, wines: f.wines, notes: f.notes, published: f.published, image: c.image || '' };
+    return { title: f.title, startsAt: fromLocalInput(f.startsAt), durationMin: f.durationMin || 120, address: f.address, lat: c.lat ?? null, lon: c.lon ?? null, price: f.price ?? 0, capacity: f.capacity, cancelHours: f.cancelHours ?? CONFIG.cancelHours, showTheme: f.showTheme, theme: f.theme, wines: f.wines, notes: f.notes, published: f.published, image: c.image || '', image2: c.image2 || '', promo: f.promo };
   };
 
   const offs = [
@@ -83,6 +89,13 @@ export default function view({ el, params }) {
       try { c.image = await resizeImage(file, 1000, 0.72); c.imgEdited = true; } catch { toast(t('a.cata.photoErr'), 'err'); }
       renderKeep(keep);
     }),
+    on(el, 'change', '#cImg2', async (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      const keep = formData(el.querySelector('#cForm'));
+      try { c.image2 = await resizeImage(file, 1000, 0.72); c.imgEdited = true; } catch { toast(t('a.cata.photoErr'), 'err'); }
+      renderKeep(keep);
+    }),
+    on(el, 'click', '[data-act="rmimg2"]', () => { const keep = formData(el.querySelector('#cForm')); c.image2 = ''; c.imgEdited = true; renderKeep(keep); }),
     on(el, 'click', '[data-act="rmimg"]', () => { const keep = formData(el.querySelector('#cForm')); c.image = ''; c.imgEdited = true; renderKeep(keep); }),
     on(el, 'click', '[data-act="geo"]', async () => {
       const f = formData(el.querySelector('#cForm')); if (!f.address) return;
