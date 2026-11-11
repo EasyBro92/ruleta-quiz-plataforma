@@ -23,13 +23,14 @@ export const CONFIG = {
     instagram: 'salut_catarsi',   // usuario de Instagram, sin @
   },
 
+  // Proyecto de Firebase «catarsi-784f2». Estos valores son públicos (los ve cualquiera en la web): lo que protege los datos son las reglas de firestore.rules.
   firebase: {
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    storageBucket: '',
-    messagingSenderId: '',
-    appId: '',
+    apiKey: 'AIzaSyBdERdb04_CpUdbNj75cSqQjHN99kPn81o',
+    authDomain: 'catarsi-784f2.firebaseapp.com',
+    projectId: 'catarsi-784f2',
+    storageBucket: 'catarsi-784f2.firebasestorage.app',
+    messagingSenderId: '819652691050',
+    appId: '1:819652691050:web:aef61c62ab910658037613',
   },
   firebaseSdkVersion: '10.14.1',
 
@@ -51,7 +52,7 @@ export const CONFIG = {
   trust: { minRatings: 3 },       // la valoración media solo sale en la portada a partir de este número de valoraciones
 
   // Si usas Google/Apple como método de acceso, actívalos en Firebase → Authentication
-  loginMethods: { email: true, google: true, apple: true },
+  loginMethods: { email: true, google: true, apple: false },   // Apple exige cuenta de pago de Apple Developer: desactivado
 };
 
 export const isDemo = () => !CONFIG.firebase.apiKey;
