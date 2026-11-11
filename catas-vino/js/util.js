@@ -87,16 +87,18 @@ export function toast(msg, type = '') {
   root.appendChild(el);
   setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }, type === 'err' ? 4200 : 2400);
 }
-export function modal(content, { onClose } = {}) {
+// `fijo`: un diálogo que no se cierra solo ni al tocar fuera ni al cambiar de pantalla (p. ej. la bienvenida con la
+// confirmación de mayoría de edad). Solo se cierra con su propio botón.
+export function modal(content, { onClose, fijo = false } = {}) {
   const root = document.getElementById('modal-root');
   const bg = document.createElement('div');
-  bg.className = 'modal-bg';
+  bg.className = fijo ? 'modal-bg fijo' : 'modal-bg';
   const box = document.createElement('div');
   box.className = 'modal';
   setHtml(box, content);
   bg.appendChild(box); root.appendChild(bg);
   const close = () => { bg.remove(); onClose && onClose(); };
-  bg.addEventListener('mousedown', (e) => { if (e.target === bg) close(); });
+  if (!fijo) bg.addEventListener('mousedown', (e) => { if (e.target === bg) close(); });
   box.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) close(); });
   return { el: box, close };
 }

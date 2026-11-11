@@ -92,8 +92,9 @@ async function route() {
   // la vista nueva con el CSS, los textos y el app.js de la versión anterior, que es lo que dejaba botones y textos rotos.
   if (S.recargar) { location.reload(); return; }
   const my = ++token;
-  // un diálogo abierto (p. ej. «Vols sortir?») no debe quedarse flotando sobre otra pantalla
-  document.querySelectorAll('#modal-root .modal-bg').forEach((b) => b.dispatchEvent(new MouseEvent('mousedown')));
+  // un diálogo abierto (p. ej. «Vols sortir?») no debe quedarse flotando sobre otra pantalla; los `fijo` (la bienvenida
+  // de la primera vez) se quedan: antes el cambio de pantalla de después de entrar los cerraba al instante y nadie veía la pregunta
+  document.querySelectorAll('#modal-root .modal-bg:not(.fijo)').forEach((b) => b.dispatchEvent(new MouseEvent('mousedown')));
   cleanup && (await Promise.resolve(cleanup())); cleanup = null;
   const full = location.hash.replace(/^#/, '') || '/';
   const [path, qs] = full.split('?');
@@ -141,7 +142,7 @@ function askAdult(p) {
       <p class="hint">${t('age.local')}</p>
       <button class="btn primary block" type="submit">${t('common.continue')}</button>
       <button class="btn ghost block mt" type="button" data-out>${t('auth.logout')}</button>
-    </form>`);
+    </form>`, { fijo: true });
   m.el.querySelector('form').addEventListener('submit', async (e) => {
     e.preventDefault(); const f = formData(e.target); if (!f.adult) return;
     await db.update(`users/${p.uid}`, { name: f.name, nick: f.nick, phone: f.phone, adult: true });
